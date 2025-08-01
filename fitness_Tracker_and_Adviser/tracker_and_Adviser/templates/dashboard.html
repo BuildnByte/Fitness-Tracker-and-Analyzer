@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | FitTrack Pro</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Animated background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: float 30s linear infinite;
+            z-index: 0;
+        }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(-30px, -30px) rotate(360deg); }
+        }
+
+        .dashboard-container {
+            position: relative;
+            z-index: 1;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .user-info h1 {
+            color: #1a1a1a;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .user-info p {
+            color: #6b7280;
+            font-size: 1rem;
+        }
+
+        .streak-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 15px;
+            font-weight: 600;
+        }
+
+        .streak-number {
+            font-size: 2rem;
+            font-weight: 800;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .card-title {
+            color: #1a1a1a;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 15px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #6b7280;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 1rem;
+        }
+
+        .recommendations {
+            grid-column: 1 / -1;
+        }
+
+        .recommendation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .recommendation-card {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border: 2px solid rgba(102, 126, 234, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .recommendation-card:hover {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+            border-color: rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .recommendation-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .recommendation-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: white;
+        }
+
+        .recommendation-title {
+            color: #1a1a1a;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .recommendation-content {
+            color: #374151;
+            line-height: 1.6;
+        }
+
+        .recommendation-content ul {
+            margin: 1rem 0;
+            padding-left: 1.5rem;
+        }
+
+        .recommendation-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-indicator {
+            background: #e5e7eb;
+            border-radius: 10px;
+            height: 8px;
+            margin: 1rem 0;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        .insights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .insight-item {
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 10px;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .insight-icon {
+            width: 35px;
+            height: 35px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1rem;
+        }
+
+        .insight-text {
+            flex: 1;
+            color: #374151;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .mood-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(102, 126, 234, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #667eea;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-container {
+                padding: 1rem;
+            }
+
+            .header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .recommendation-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .user-info h1 {
+                font-size: 1.5rem;
+            }
+        }
+
+        .alert {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border: 2px solid #f59e0b;
+            border-radius: 15px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1rem;
+            color: #92400e;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .alert-icon {
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="user-info">
+                <h1>Welcome back, Alex! 👋</h1>
+                <p>Here's your health summary for this week</p>
+            </div>
+            <div class="streak-info">
+                <div>
+                    <div class="streak-number">12</div>
+                    <div>Day Streak</div>
+                </div>
+                <div style="font-size: 2rem;">🔥</div>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">68.5<span style="font-size: 1rem; color: #10b981;">↓</span></div>
+                <div class="stat-label">Current Weight (kg)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">7.5</div>
+                <div class="stat-label">Avg Sleep (hours)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">8,450</div>
+                <div class="stat-label">Daily Steps</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">4<span style="font-size: 1rem; color: #10b981;">↓</span></div>
+                <div class="stat-label">Stress Level</div>
+            </div>
+        </div>
+
+        <!-- Main Dashboard Grid -->
+        <div class="dashboard-grid">
+            <!-- Weight Progress Chart -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">📈</div>
+                    <div class="card-title">Weight Progress</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="weightChart"></canvas>
+                </div>
+                <div class="mood-indicator">
+                    <span>📉</span>
+                    <span>Great progress! You've lost 2.5kg this month</span>
+                </div>
+            </div>
+
+            <!-- Sleep & Activity Chart -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">😴</div>
+                    <div class="card-title">Sleep & Activity</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="sleepChart"></canvas>
+                </div>
+                <div class="mood-indicator">
+                    <span>⚡</span>
+                    <span>Your sleep quality is improving!</span>
+                </div>
+            </div>
+
+            <!-- Stress & Mood Tracking -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">🧠</div>
+                    <div class="card-title">Stress & Mood</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="stressChart"></canvas>
+                </div>
+                <div class="mood-indicator">
+                    <span>😊</span>
+                    <span>Current Mood: Happy</span>
+                </div>
+            </div>
+
+            <!-- Nutrition Overview -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">🍎</div>
+                    <div class="card-title">Nutrition Overview</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="nutritionChart"></canvas>
+                </div>
+                <div class="insights-grid">
+                    <div class="insight-item">
+                        <div class="insight-icon">💧</div>
+                        <div class="insight-text">Water intake: 2.1L/day</div>
+                    </div>
+                    <div class="insight-item">
+                        <div class="insight-icon">🥗</div>
+                        <div class="insight-text">Diet: Vegetarian</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recommendations Section -->
+        <div class="card recommendations">
+            <div class="card-header">
+                <div class="card-icon">💡</div>
+                <div class="card-title">Personalized Recommendations</div>
+            </div>
+            
+            <div class="alert">
+                <div class="alert-icon">⚠️</div>
+                <div>Your water intake is below recommended levels. Try to drink at least 2.5L daily for optimal health.</div>
+            </div>
+
+            <div class="recommendation-grid">
+                <!-- Workout Routine -->
+                <div class="recommendation-card">
+                    <div class="recommendation-header">
+                        <div class="recommendation-icon">💪</div>
+                        <div class="recommendation-title">This Week's Workout Plan</div>
+                    </div>
+                    <div class="recommendation-content">
+                        <p><strong>Focus:</strong> Weight Loss & Cardio</p>
+                        <ul>
+                            <li><strong>Monday:</strong> 30-min brisk walk + 15-min strength training</li>
+                            <li><strong>Wednesday:</strong> 45-min cycling or swimming</li>
+                            <li><strong>Friday:</strong> 20-min HIIT workout + stretching</li>
+                            <li><strong>Weekend:</strong> Outdoor activity (hiking, sports)</li>
+                        </ul>
+                        <div class="progress-indicator">
+                            <div class="progress-bar" style="width: 60%"></div>
+                        </div>
+                        <p style="font-size: 0.875rem; color: #6b7280;">Weekly progress: 60% complete</p>
+                    </div>
+                </div>
+
+                <!-- Diet Plan -->
+                <div class="recommendation-card">
+                    <div class="recommendation-header">
+                        <div class="recommendation-icon">🥗</div>
+                        <div class="recommendation-title">Nutrition Guidelines</div>
+                    </div>
+                    <div class="recommendation-content">
+                        <p><strong>Goal:</strong> Healthy Weight Loss (1800 cal/day)</p>
+                        <ul>
+                            <li><strong>Breakfast:</strong> Oatmeal with fruits & nuts (400 cal)</li>
+                            <li><strong>Lunch:</strong> Quinoa salad with vegetables (500 cal)</li>
+                            <li><strong>Dinner:</strong> Grilled vegetables with tofu (450 cal)</li>
+                            <li><strong>Snacks:</strong> Greek yogurt, fruits, nuts (450 cal)</li>
+                        </ul>
+                        <div class="progress-indicator">
+                            <div class="progress-bar" style="width: 75%"></div>
+                        </div>
+                        <p style="font-size: 0.875rem; color: #6b7280;">Nutrition goals: 75% on track</p>
+                    </div>
+                </div>
+
+                <!-- Health Tips -->
+                <div class="recommendation-card">
+                    <div class="recommendation-header">
+                        <div class="recommendation-icon">🎯</div>
+                        <div class="recommendation-title">Health Tips</div>
+                    </div>
+                    <div class="recommendation-content">
+                        <p><strong>This Week's Focus Areas:</strong></p>
+                        <ul>
+                            <li>Increase water intake to 2.5-3L daily</li>
+                            <li>Practice 10-min meditation for stress reduction</li>
+                            <li>Aim for 8 hours of quality sleep</li>
+                            <li>Take short walks after meals</li>
+                            <li>Include more fiber-rich foods in diet</li>
+                        </ul>
+                        <div class="insights-grid" style="margin-top: 1rem;">
+                            <div class="insight-item">
+                                <div class="insight-icon">😴</div>
+                                <div class="insight-text">Sleep quality: Good</div>
+                            </div>
+                            <div class="insight-item">
+                                <div class="insight-icon">🧘</div>
+                                <div class="insight-text">Try stress-relief apps</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progress Insights -->
+                <div class="recommendation-card">
+                    <div class="recommendation-header">
+                        <div class="recommendation-icon">📊</div>
+                        <div class="recommendation-title">Weekly Insights</div>
+                    </div>
+                    <div class="recommendation-content">
+                        <p><strong>Key Achievements:</strong></p>
+                        <ul>
+                            <li>✅ Lost 0.5kg this week</li>
+                            <li>✅ Maintained consistent workout schedule</li>
+                            <li>✅ Reduced stress levels significantly</li>
+                            <li>⚠️ Need to improve water intake</li>
+                            <li>⚠️ Sleep could be more consistent</li>
+                        </ul>
+                        <div style="margin-top: 1rem; padding: 1rem; background: rgba(16, 185, 129, 0.1); border-radius: 10px; border-left: 4px solid #10b981;">
+                            <strong style="color: #065f46;">Motivation:</strong> You're doing great! Keep up the consistent effort and you'll reach your goal weight of 65kg by next month.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Chart.js configuration
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.color = '#6b7280';
+
+        // Weight Progress Chart
+        const weightCtx = document.getElementById('weightChart').getContext('2d');
+        new Chart(weightCtx, {
+            type: 'line',
+            data: {
+                labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6'],
+                datasets: [{
+                    label: 'Weight (kg)',
+                    data: [71, 70.2, 69.8, 69.1, 68.9, 68.5],
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#667eea',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        min: 65,
+                        max: 72,
+                        grid: { color: 'rgba(0,0,0,0.1)' }
+                    },
+                    x: {
+                        grid: { color: 'rgba(0,0,0,0.1)' }
+                    }
+                }
+            }
+        });
+
+        // Sleep & Activity Chart
+        const sleepCtx = document.getElementById('sleepChart').getContext('2d');
+        new Chart(sleepCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Sleep Hours',
+                    data: [7.5, 8, 7, 7.5, 8.5, 9, 8],
+                    backgroundColor: 'rgba(102, 126, 234, 0.8)',
+                    borderColor: '#667eea',
+                    borderWidth: 1,
+                    borderRadius: 8
+                }, {
+                    label: 'Workout Minutes',
+                    data: [30, 0, 45, 30, 0, 60, 20],
+                    backgroundColor: 'rgba(118, 75, 162, 0.8)',
+                    borderColor: '#764ba2',
+                    borderWidth: 1,
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(0,0,0,0.1)' }
+                    },
+                    x: {
+                        grid: { color: 'rgba(0,0,0,0.1)' }
+                    }
+                }
+            }
+        });
+
+        // Stress & Mood Chart
+        const stressCtx = document.getElementById('stressChart').getContext('2d');
+        new Chart(stressCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Low Stress (1-3)', 'Medium Stress (4-6)', 'High Stress (7-10)'],
+                datasets: [{
+                    data: [60, 35, 5],
+                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+
+        // Nutrition Chart
+        const nutritionCtx = document.getElementById('nutritionChart').getContext('2d');
+        new Chart(nutritionCtx, {
+            type: 'radar',
+            data: {
+                labels: ['Proteins', 'Carbs', 'Fats', 'Fiber', 'Vitamins', 'Water'],
+                datasets: [{
+                    label: 'Current Intake',
+                    data: [70, 60, 55, 80, 85, 65],
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                    borderWidth: 2
+                }, {
+                    label: 'Recommended',
+                    data: [80, 70, 60, 90, 90, 85],
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                },
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        max: 100,
+                        grid: { color: 'rgba(0,0,0,0.1)' }
+                    }
+                }
+            }
+        });
+
+        // Add some interactive animations
+        document.querySelectorAll('.card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-5px) scale(1.02)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+
+        // Simulate real-time updates
+        setInterval(() => {
+            const streakElement = document.querySelector('.streak-number');
+            if (streakElement) {
+                const currentStreak = parseInt(streakElement.textContent);
+                // Simulate small changes for demo purposes
+                if (Math.random() > 0.9) {
+                    streakElement.style.transform = 'scale(1.1)';
+                    setTimeout(() => {
+                        streakElement.style.transform = 'scale(1)';
+                    }, 200);
+                }
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

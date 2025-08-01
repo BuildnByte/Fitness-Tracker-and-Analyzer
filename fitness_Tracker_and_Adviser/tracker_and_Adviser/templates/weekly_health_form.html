@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Health Check-In | FitTrack Pro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+            padding: 2rem 1rem;
+        }
+
+        /* Animated background elements */
+        body::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: float 20s linear infinite;
+            z-index: 1;
+        }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(-50px, -50px) rotate(360deg); }
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 3rem 2.5rem;
+            border-radius: 24px;
+            box-shadow: 
+                0 25px 50px rgba(0, 0, 0, 0.15),
+                0 0 0 1px rgba(255, 255, 255, 0.1);
+            width: 100%;
+            max-width: 700px;
+            position: relative;
+            z-index: 2;
+            transform: translateY(0);
+            animation: slideUp 0.8s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { 
+                opacity: 0; 
+                transform: translateY(30px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+            }
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .logo-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        h1 {
+            color: #1a1a1a;
+            font-size: 2rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: #6b7280;
+            text-align: center;
+            margin-bottom: 2.5rem;
+            font-size: 0.95rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            position: relative;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-label {
+            display: block;
+            color: #374151;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 1rem 1.25rem;
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            background: white;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .form-input::placeholder, .form-textarea::placeholder {
+            color: #9ca3af;
+        }
+
+        .form-select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 1rem center;
+            background-repeat: no-repeat;
+            background-size: 1rem;
+            padding-right: 3rem;
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6b7280;
+            font-size: 1.1rem;
+            pointer-events: none;
+        }
+
+        .form-input.with-icon {
+            padding-left: 3rem;
+        }
+
+        .stress-levels {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .stress-option {
+            position: relative;
+        }
+
+        .stress-option input[type="radio"] {
+            display: none;
+        }
+
+        .stress-option label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.75rem 0.5rem;
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #6b7280;
+        }
+
+        .stress-option input[type="radio"]:checked + label {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .stress-number {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .submit-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .submit-btn:hover::before {
+            left: 100%;
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Loading state */
+        .submit-btn.loading {
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        .submit-btn.loading::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .section-title {
+            color: #374151;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 2rem 0 1rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #e5e7eb;
+            grid-column: 1 / -1;
+        }
+
+        .goal-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .goal-option {
+            position: relative;
+        }
+
+        .goal-option input[type="radio"] {
+            display: none;
+        }
+
+        .goal-option label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1rem;
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #6b7280;
+        }
+
+        .goal-option input[type="radio"]:checked + label {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .goal-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 2rem 1.5rem;
+            }
+            
+            h1 {
+                font-size: 1.75rem;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stress-levels {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .goal-options {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 1rem 0.5rem;
+            }
+
+            .container {
+                padding: 1.5rem 1rem;
+            }
+
+            .stress-levels {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .goal-options {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <div class="logo-icon">📊</div>
+            <h1>Weekly Health Check-In</h1>
+            <p class="subtitle">Track your progress and stay on top of your health goals</p>
+        </div>
+
+        <form id="healthForm">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label" for="weight">Weight (kg)</label>
+                    <div style="position: relative;">
+                        <span class="input-icon">⚖️</span>
+                        <input type="number" id="weight" class="form-input with-icon" placeholder="65.0" step="0.1" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="sleep">Sleep Duration (avg hrs/night)</label>
+                    <div style="position: relative;">
+                        <span class="input-icon">😴</span>
+                        <input type="number" id="sleep" class="form-input with-icon" placeholder="8.0" step="0.1" min="0" max="24" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="water">Water Intake (liters/day)</label>
+                    <div style="position: relative;">
+                        <span class="input-icon">💧</span>
+                        <input type="number" id="water" class="form-input with-icon" placeholder="2.5" step="0.1" min="0" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="steps">Steps Walked (avg/day)</label>
+                    <div style="position: relative;">
+                        <span class="input-icon">👟</span>
+                        <input type="number" id="steps" class="form-input with-icon" placeholder="10000" min="0" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="workout">Workout Duration (mins/day)</label>
+                    <div style="position: relative;">
+                        <span class="input-icon">💪</span>
+                        <input type="number" id="workout" class="form-input with-icon" placeholder="30" min="0" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="calories">Calories Intake (avg/day)</label>
+                    <div style="position: relative;">
+                        <span class="input-icon">🍎</span>
+                        <input type="number" id="calories" class="form-input with-icon" placeholder="2000" min="0" required>
+                    </div>
+                </div>
+
+                <div class="form-group full-width">
+                    <label class="form-label">Stress Level (1 = Low, 10 = High)</label>
+                    <div class="stress-levels">
+                        <div class="stress-option">
+                            <input type="radio" id="stress1" name="stress" value="1" required>
+                            <label for="stress1">
+                                <span class="stress-number">1</span>
+                                <span>Low</span>
+                            </label>
+                        </div>
+                        <div class="stress-option">
+                            <input type="radio" id="stress2" name="stress" value="2">
+                            <label for="stress2">
+                                <span class="stress-number">2</span>
+                            </label>
+                        </div>
+                        <div class="stress-option">
+                            <input type="radio" id="stress3" name="stress" value="3">
+                            <label for="stress3">
+                                <span class="stress-number">3</span>
+                            </label>
+                        </div>
+                        <div class="stress-option">
+                            <input type="radio" id="stress4" name="stress" value="4">
+                            <label for="stress4">
+                                <span class="stress-number">4</span>
+                            </label>
+                        </div>
+                        <div class="stress-option">
+                            <input type="radio" id="stress5" name="stress" value="5">
+                            <label for="stress5">
+                                <span class="stress-number">5</span>
+                                <span>Med</span>
+                            </label>
+                        </div>
+                        <div class="stress-option">
+                            <input type="radio" id="stress6" name="stress" value="6">
+                            <label for="stress6">
+                                <span class="stress-number">6</span>
+                            </label>
+                        </div>
+                        <div class="stress-option">
+                            <input type="radio" id="stress7" name="stress" value="7">
+                            <label for="stress7">
+                                <span class="stress-number">7</span>
+                            </label>
+                        </div>
+                        <div class="stress-option">
+                            <input type="radio" id="stress8" name="stress" value="8">
+                            <label for="stress8">
+                                <span class="stress-number">8</span>
+                            </label>
+                        </div>
+                        <div class="stress-option">
+                            <input type="radio" id="stress9" name="stress" value="9">
+                            <label for="stress9">
+                                <span class="stress-number">9</span>
+                            </label>
+                        </div>
+                        <div class="stress-option">
+                            <input type="radio" id="stress10" name="stress" value="10">
+                            <label for="stress10">
+                                <span class="stress-number">10</span>
+                                <span>High</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="mood">Current Mood</label>
+                    <select id="mood" class="form-select" required>
+                        <option value="">Select your mood</option>
+                        <option value="Happy">😊 Happy</option>
+                        <option value="Neutral">😐 Neutral</option>
+                        <option value="Sad">😞 Sad</option>
+                        <option value="Stressed">😰 Stressed</option>
+                        <option value="Energetic">⚡ Energetic</option>
+                        <option value="Tired">😴 Tired</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="diet">Diet Type</label>
+                    <select id="diet" class="form-select" required>
+                        <option value="">Select diet type</option>
+                        <option value="Veg">🥗 Vegetarian</option>
+                        <option value="Non-Veg">🍖 Non-Vegetarian</option>
+                        <option value="Vegan">🌱 Vegan</option>
+                        <option value="Keto">🥑 Keto</option>
+                        <option value="Mediterranean">🫒 Mediterranean</option>
+                        <option value="Other">🍽️ Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group full-width">
+                    <label class="form-label" for="issues">Health Issues (if any)</label>
+                    <textarea id="issues" class="form-textarea" placeholder="e.g., Diabetes, PCOS, High BP, Joint pain, etc." rows="3"></textarea>
+                </div>
+
+                <div class="form-group full-width">
+                    <label class="form-label">Primary Fitness Goal</label>
+                    <div class="goal-options">
+                        <div class="goal-option">
+                            <input type="radio" id="weight_loss" name="goal" value="weight_loss" required>
+                            <label for="weight_loss">
+                                <span class="goal-icon">📉</span>
+                                <span>Lose Weight</span>
+                            </label>
+                        </div>
+                        <div class="goal-option">
+                            <input type="radio" id="muscle_gain" name="goal" value="muscle_gain">
+                            <label for="muscle_gain">
+                                <span class="goal-icon">💪</span>
+                                <span>Gain Muscle</span>
+                            </label>
+                        </div>
+                        <div class="goal-option">
+                            <input type="radio" id="endurance" name="goal" value="endurance">
+                            <label for="endurance">
+                                <span class="goal-icon">🏃</span>
+                                <span>Improve Endurance</span>
+                            </label>
+                        </div>
+                        <div class="goal-option">
+                            <input type="radio" id="maintain" name="goal" value="maintain">
+                            <label for="maintain">
+                                <span class="goal-icon">⚖️</span>
+                                <span>Maintain Health</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="submit-btn" id="submitBtn">
+                Submit Weekly Health Report
+            </button>
+        </form>
+    </div>
+
+    <script>
+        // Form handling
+        document.getElementById('healthForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.classList.add('loading');
+            submitBtn.textContent = '';
+            
+            // Simulate form submission
+            setTimeout(() => {
+                submitBtn.classList.remove('loading');
+                submitBtn.textContent = 'Submit Weekly Health Report';
+                
+                // Show success message
+                alert('Health report submitted successfully! 🎉\nYour data has been recorded for this week.');
+                
+                // Optionally reset form
+                // this.reset();
+            }, 2000);
+        });
+
+        // Input animations and interactions
+        document.querySelectorAll('.form-input, .form-select, .form-textarea').forEach(input => {
+            input.addEventListener('focus', function() {
+                this.style.transform = 'translateY(-1px)';
+            });
+            
+            input.addEventListener('blur', function() {
+                this.style.transform = 'translateY(0)';
+            });
+        });
+
+        // Add some visual feedback for radio buttons
+        document.querySelectorAll('input[type="radio"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                // Add a subtle animation when selecting options
+                const label = this.nextElementSibling;
+                label.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    label.style.transform = 'translateY(-2px)';
+                }, 100);
+            });
+        });
+
+        // Validate numeric inputs
+        document.querySelectorAll('input[type="number"]').forEach(input => {
+            input.addEventListener('input', function() {
+                if (this.value < 0) {
+                    this.value = 0;
+                }
+            });
+        });
+
+        // Add progress indication
+        const formInputs = document.querySelectorAll('input[required], select[required]');
+        let completedFields = 0;
+
+        function updateProgress() {
+            completedFields = 0;
+            formInputs.forEach(input => {
+                if (input.type === 'radio') {
+                    if (document.querySelector(`input[name="${input.name}"]:checked`)) {
+                        completedFields++;
+                    }
+                } else if (input.value.trim() !== '') {
+                    completedFields++;
+                }
+            });
+            
+            const progress = (completedFields / formInputs.length) * 100;
+            console.log(`Form completion: ${Math.round(progress)}%`);
+        }
+
+        formInputs.forEach(input => {
+            input.addEventListener('input', updateProgress);
+            input.addEventListener('change', updateProgress);
+        });
+    </script>
+</body>
+</html>

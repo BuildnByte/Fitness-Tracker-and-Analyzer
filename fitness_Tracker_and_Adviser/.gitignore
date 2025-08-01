@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.env
+*.log
+
+# VS Code or IDE
+.vscode/
+.idea/
+
+# Django
+db.sqlite3
+
+# Firebase
+firebase_config.json
+
+# Other
+*.bak
+*.DS_Store
+.env
