@@ -34,13 +34,7 @@
             height: 100%;
             background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
             background-size: 50px 50px;
-            
             z-index: 1;
-        }
-
-        @keyframes float {
-            0% { transform: translate(0, 0) rotate(0deg); }
-            100% { transform: translate(-50px, -50px) rotate(360deg); }
         }
 
         .container {
@@ -56,18 +50,6 @@
             position: relative;
             z-index: 2;
             transform: translateY(0);
-            
-        }
-
-        @keyframes slideUp {
-            from { 
-                opacity: 0; 
-                transform: translateY(30px); 
-            }
-            to { 
-                opacity: 1; 
-                transform: translateY(0); 
-            }
         }
 
         .logo {
@@ -110,15 +92,31 @@
             font-size: 0.95rem;
         }
 
-        .form-group {
-            position: relative;
+        .messages {
             margin-bottom: 1.5rem;
         }
 
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
+        .messages .error {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            border: 1px solid #fecaca;
+        }
+
+        .messages .success {
+            background: #dcfce7;
+            color: #16a34a;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            border: 1px solid #bbf7d0;
+        }
+
+        .form-group {
+            position: relative;
+            margin-bottom: 1.5rem;
         }
 
         .form-label {
@@ -263,96 +261,6 @@
             transform: none;
         }
 
-        .terms-checkbox {
-            display: flex;
-            align-items: flex-start;
-            gap: 0.75rem;
-            margin-bottom: 1.5rem;
-            font-size: 0.9rem;
-            color: #6b7280;
-        }
-
-        .terms-checkbox input[type="checkbox"] {
-            width: auto;
-            margin: 0;
-            accent-color: #667eea;
-        }
-
-        .terms-checkbox a {
-            color: #667eea;
-            text-decoration: none;
-        }
-
-        .terms-checkbox a:hover {
-            text-decoration: underline;
-        }
-
-        .divider {
-            display: flex;
-            align-items: center;
-            margin: 2rem 0;
-            color: #6b7280;
-            font-size: 0.875rem;
-        }
-
-        .divider::before,
-        .divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: #e5e7eb;
-        }
-
-        .divider span {
-            padding: 0 1rem;
-            background: rgba(255, 255, 255, 0.95);
-        }
-
-        .social-login {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .social-btn {
-            flex: 1;
-            padding: 0.875rem;
-            background: white;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            font-weight: 500;
-            color: #374151;
-        }
-
-        .social-btn:hover {
-            border-color: #d1d5db;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        .login-link {
-            text-align: center;
-            color: #6b7280;
-            font-size: 0.95rem;
-        }
-
-        .login-link a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 600;
-            transition: color 0.2s ease;
-        }
-
-        .login-link a:hover {
-            color: #5a67d8;
-        }
-
         .goal-icons {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -396,6 +304,23 @@
             opacity: 0.8;
         }
 
+        .login-link {
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.95rem;
+        }
+
+        .login-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s ease;
+        }
+
+        .login-link a:hover {
+            color: #5a67d8;
+        }
+
         /* Loading state */
         .signup-btn.loading {
             pointer-events: none;
@@ -433,10 +358,6 @@
                 font-size: 1.75rem;
             }
 
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-
             .goal-icons {
                 grid-template-columns: 1fr;
             }
@@ -451,28 +372,29 @@
             <p class="subtitle">Start your fitness transformation today</p>
         </div>
 
-        <form id="signupForm">
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label" for="firstName">First Name</label>
-                    <input 
-                        type="text" 
-                        id="firstName" 
-                        class="form-input" 
-                        placeholder="John"
-                        required 
-                    />
+        <!-- Django Messages -->
+        {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="{% if message.tags %}{{ message.tags }}{% endif %}">
+                    {{ message }}
                 </div>
-                <div class="form-group">
-                    <label class="form-label" for="lastName">Last Name</label>
-                    <input 
-                        type="text" 
-                        id="lastName" 
-                        class="form-input" 
-                        placeholder="Doe"
-                        required 
-                    />
-                </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="POST" id="signupForm">
+            {% csrf_token %}
+            <div class="form-group">
+                <label class="form-label" for="name">Full Name</label>
+                <input 
+                    type="text" 
+                    id="name" 
+                    name="name"
+                    class="form-input" 
+                    placeholder="John Doe"
+                    required 
+                />
             </div>
 
             <div class="form-group">
@@ -480,6 +402,7 @@
                 <input 
                     type="email" 
                     id="email" 
+                    name="email"
                     class="form-input" 
                     placeholder="john.doe@example.com"
                     required 
@@ -492,6 +415,7 @@
                     <input 
                         type="password" 
                         id="password" 
+                        name="password"
                         class="form-input" 
                         placeholder="Create a strong password"
                         required 
@@ -518,24 +442,6 @@
             </div>
 
             <div class="form-group">
-                <label class="form-label" for="confirmPassword">Confirm Password</label>
-                <div style="position: relative;">
-                    <input 
-                        type="password" 
-                        id="confirmPassword" 
-                        class="form-input" 
-                        placeholder="Confirm your password"
-                        required 
-                        oninput="checkPasswordMatch()"
-                    />
-                    <button type="button" class="password-toggle" onclick="togglePassword('confirmPassword')">
-                        👁️
-                    </button>
-                </div>
-                <div id="passwordMatch" style="font-size: 0.8rem; margin-top: 0.5rem;"></div>
-            </div>
-
-            <div class="form-group">
                 <label class="form-label">Primary Fitness Goal</label>
                 <div class="goal-icons">
                     <div class="goal-option" onclick="selectGoal('weight_loss', this)">
@@ -559,15 +465,7 @@
                         <div class="description">Stay healthy & active</div>
                     </div>
                 </div>
-                <input type="hidden" id="fitnessGoal" required />
-            </div>
-
-            <div class="terms-checkbox">
-                <input type="checkbox" id="terms" required />
-                <label for="terms">
-                    I agree to the <a href="#" onclick="showTerms()">Terms of Service</a> and 
-                    <a href="#" onclick="showPrivacy()">Privacy Policy</a>
-                </label>
+                <input type="hidden" id="goal" name="goal" required />
             </div>
 
             <button type="submit" class="signup-btn" id="signupBtn">
@@ -576,35 +474,42 @@
         </form>
 
         <div class="login-link">
-            Already have an account? <a href="/">Sign In</a>
+            Already have an account? <a href="{% url 'login' %}">Sign In</a>
         </div>
     </div>
 
     <script>
         let selectedGoal = '';
 
-        // Form handling
         document.getElementById('signupForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            if (!selectedGoal) {
-                alert('Please select your fitness goal');
+            // Basic client-side validation
+            const name = document.getElementById('name').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const goal = document.getElementById('goal').value;
+
+            if (!name || !email || !password || !goal) {
+                e.preventDefault();
+                alert('Please fill in all fields and select a fitness goal.');
                 return;
             }
 
+            // Check password requirements
+            const passwordValid = password.length >= 8 &&
+                                  /[A-Z]/.test(password) &&
+                                  /\d/.test(password);
+            if (!passwordValid) {
+                e.preventDefault();
+                alert('Password must be at least 8 characters long and contain one uppercase letter and one number.');
+                return;
+            }
+
+            // Show loading state
             const signupBtn = document.getElementById('signupBtn');
             signupBtn.classList.add('loading');
             signupBtn.textContent = '';
-            
-            // Simulate signup process
-            setTimeout(() => {
-                signupBtn.classList.remove('loading');
-                signupBtn.textContent = 'Create Your Account';
-                alert('Account created successfully! Welcome to FitTrack Pro!');
-            }, 2500);
         });
 
-        // Password toggle
         function togglePassword(inputId) {
             const passwordInput = document.getElementById(inputId);
             const toggleBtn = passwordInput.nextElementSibling;
@@ -618,7 +523,6 @@
             }
         }
 
-        // Password strength checker
         function checkPasswordStrength() {
             const password = document.getElementById('password').value;
             const strengthBar = document.getElementById('strengthBar');
@@ -633,7 +537,7 @@
             document.getElementById('req-uppercase').classList.toggle('met', requirements.uppercase);
             document.getElementById('req-number').classList.toggle('met', requirements.number);
 
-            // Calculate strength
+            // Update strength bar
             const metCount = Object.values(requirements).filter(Boolean).length;
             strengthBar.className = 'password-strength-bar';
             
@@ -648,55 +552,19 @@
             }
         }
 
-        // Password match checker
-        function checkPasswordMatch() {
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            const matchDiv = document.getElementById('passwordMatch');
-
-            if (confirmPassword.length === 0) {
-                matchDiv.textContent = '';
-                return;
-            }
-
-            if (password === confirmPassword) {
-                matchDiv.textContent = '✅ Passwords match';
-                matchDiv.style.color = '#10b981';
-            } else {
-                matchDiv.textContent = '❌ Passwords do not match';
-                matchDiv.style.color = '#ef4444';
-            }
-        }
-
-        // Goal selection
         function selectGoal(goal, element) {
-            // Remove selection from all goals
+            // Remove selection from all options
             document.querySelectorAll('.goal-option').forEach(option => {
                 option.classList.remove('selected');
             });
             
-            // Select clicked goal
+            // Add selection to clicked option
             element.classList.add('selected');
             selectedGoal = goal;
-            document.getElementById('fitnessGoal').value = goal;
+            document.getElementById('goal').value = goal;
         }
 
-        // Navigation functions
-        
-
-        function showTerms() {
-            alert('Terms of Service would be displayed');
-        }
-
-        function showPrivacy() {
-            alert('Privacy Policy would be displayed');
-        }
-
-        function socialSignup(provider) {
-            alert(`${provider.charAt(0).toUpperCase() + provider.slice(1)} signup would be implemented here`);
-        }
-
-        // Input animations
+        // Enhanced input animations
         document.querySelectorAll('.form-input').forEach(input => {
             input.addEventListener('focus', function() {
                 this.parentElement.style.transform = 'translateY(-2px)';

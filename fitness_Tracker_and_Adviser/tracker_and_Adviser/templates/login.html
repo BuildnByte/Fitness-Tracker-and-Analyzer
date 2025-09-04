@@ -108,6 +108,28 @@
             font-size: 0.95rem;
         }
 
+        .messages {
+            margin-bottom: 1.5rem;
+        }
+
+        .messages .error {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            border: 1px solid #fecaca;
+        }
+
+        .messages .success {
+            background: #dcfce7;
+            color: #16a34a;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            border: 1px solid #bbf7d0;
+        }
+
         .form-group {
             position: relative;
             margin-bottom: 1.5rem;
@@ -218,55 +240,6 @@
             transform: translateY(0);
         }
 
-        .divider {
-            display: flex;
-            align-items: center;
-            margin: 2rem 0;
-            color: #6b7280;
-            font-size: 0.875rem;
-        }
-
-        .divider::before,
-        .divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: #e5e7eb;
-        }
-
-        .divider span {
-            padding: 0 1rem;
-            background: rgba(255, 255, 255, 0.95);
-        }
-
-        .social-login {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .social-btn {
-            flex: 1;
-            padding: 0.875rem;
-            background: white;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            font-weight: 500;
-            color: #374151;
-        }
-
-        .social-btn:hover {
-            border-color: #d1d5db;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-
         .signup-link {
             text-align: center;
             color: #6b7280;
@@ -327,12 +300,25 @@
             <p class="subtitle">Track your fitness journey with precision</p>
         </div>
 
-        <form id="loginForm">
+        <!-- Django Messages -->
+        {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="{% if message.tags %}{{ message.tags }}{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="POST" id="loginForm">
+            {% csrf_token %}
             <div class="form-group">
                 <label class="form-label" for="email">Email Address</label>
                 <input 
                     type="email" 
                     id="email" 
+                    name="email"
                     class="form-input" 
                     placeholder="Enter your email"
                     required 
@@ -345,6 +331,7 @@
                     <input 
                         type="password" 
                         id="password" 
+                        name="password"
                         class="form-input" 
                         placeholder="Enter your password"
                         required 
@@ -365,28 +352,17 @@
         </form>
 
         <div class="signup-link">
-            Don't have an account? <a href="/signup/">Create Account</a>
+            Don't have an account? <a href="{% url 'signup' %}">Create Account</a>
         </div>
     </div>
 
     <script>
-        // Form handling
         document.getElementById('loginForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
             const loginBtn = document.getElementById('loginBtn');
             loginBtn.classList.add('loading');
             loginBtn.textContent = '';
-            
-            // Simulate login process
-            setTimeout(() => {
-                loginBtn.classList.remove('loading');
-                loginBtn.textContent = 'Sign In to Your Account';
-                alert('Login functionality would be implemented here!');
-            }, 2000);
         });
 
-        // Password toggle
         function togglePassword() {
             const passwordInput = document.getElementById('password');
             const toggleBtn = document.querySelector('.password-toggle');
@@ -400,20 +376,11 @@
             }
         }
 
-        // Navigation functions
         function showForgotPassword() {
             alert('Forgot password functionality would redirect to password reset page');
         }
 
-        function showSignup() {
-            alert('Sign up functionality would redirect to registration page');
-        }
-
-        function socialLogin(provider) {
-            alert(`${provider.charAt(0).toUpperCase() + provider.slice(1)} login would be implemented here`);
-        }
-
-        // Input animations
+        // Enhanced input animations
         document.querySelectorAll('.form-input').forEach(input => {
             input.addEventListener('focus', function() {
                 this.parentElement.style.transform = 'translateY(-2px)';

@@ -3,8 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard | FitTrack Pro</title>
+    <title>Daily Health Dashboard | FitTrack Pro</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    {% if messages %}
+        <style>
+            .messages {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 9999;
+                max-width: 400px;
+            }
+            .alert {
+                padding: 1rem 1.5rem;
+                border-radius: 8px;
+                margin-bottom: 1rem;
+                font-weight: 500;
+                animation: slideIn 0.3s ease-out;
+            }
+            .alert-success { background: #d1fae5; color: #065f46; border-left: 4px solid #10b981; }
+            .alert-error { background: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444; }
+            .alert-info { background: #dbeafe; color: #1e40af; border-left: 4px solid #3b82f6; }
+            .alert-warning { background: #fef3c7; color: #92400e; border-left: 4px solid #f59e0b; }
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        </style>
+    {% endif %}
     <style>
         * {
             margin: 0;
@@ -61,6 +87,56 @@
             gap: 1rem;
         }
 
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .add-data-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .add-data-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .add-data-btn.disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .add-data-btn.disabled:hover {
+            transform: none;
+        }
+
+        .logout-btn {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
         .user-info h1 {
             color: #1a1a1a;
             font-size: 2rem;
@@ -87,6 +163,27 @@
         .streak-number {
             font-size: 2rem;
             font-weight: 800;
+        }
+
+        .no-data-message {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 3rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .no-data-message h2 {
+            color: #374151;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .no-data-message p {
+            color: #6b7280;
+            margin-bottom: 2rem;
         }
 
         .dashboard-grid {
@@ -137,7 +234,7 @@
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1rem;
             margin-bottom: 2rem;
         }
@@ -173,84 +270,6 @@
             position: relative;
             height: 300px;
             margin-bottom: 1rem;
-        }
-
-        .recommendations {
-            grid-column: 1 / -1;
-        }
-
-        .recommendation-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .recommendation-card {
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
-            border: 2px solid rgba(102, 126, 234, 0.2);
-            border-radius: 15px;
-            padding: 1.5rem;
-            transition: all 0.3s ease;
-        }
-
-        .recommendation-card:hover {
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
-            border-color: rgba(102, 126, 234, 0.3);
-            transform: translateY(-2px);
-        }
-
-        .recommendation-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .recommendation-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            color: white;
-        }
-
-        .recommendation-title {
-            color: #1a1a1a;
-            font-size: 1.1rem;
-            font-weight: 600;
-        }
-
-        .recommendation-content {
-            color: #374151;
-            line-height: 1.6;
-        }
-
-        .recommendation-content ul {
-            margin: 1rem 0;
-            padding-left: 1.5rem;
-        }
-
-        .recommendation-content li {
-            margin-bottom: 0.5rem;
-        }
-
-        .progress-indicator {
-            background: #e5e7eb;
-            border-radius: 10px;
-            height: 8px;
-            margin: 1rem 0;
-            overflow: hidden;
-        }
-
-        .progress-bar {
-            height: 100%;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 10px;
-            transition: width 0.3s ease;
         }
 
         .insights-grid {
@@ -300,6 +319,224 @@
             color: #667eea;
         }
 
+        .summary-cards {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, rgb(210, 218, 255), rgb(255, 255, 255));
+            border: 2px solid rgba(102, 126, 234, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .summary-card:hover {
+            background: linear-gradient(135deg, rgb(210, 218, 255), rgb(255, 255, 255));
+            border-color: rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .summary-title {
+            color: #1a1a1a;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .progress-indicator {
+            background: #e5e7eb;
+            border-radius: 10px;
+            height: 8px;
+            margin: 1rem 0;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        .metric-value {
+            color: #374151;
+            font-weight: 600;
+        }
+
+        .mini-target-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .mini-target-card:hover {
+            transform: translateY(-2px);
+            background: rgba(102, 126, 234, 0.1) !important;
+        }
+
+        /* New styles for workout plan */
+        .ai-plans-section {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .plan-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .plan-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .plan-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+
+        .plan-title-group {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .ai-badge {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .plan-type-badge {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            display: inline-block;
+            margin-bottom: 1rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .targets-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .workout-schedule {
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .day-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .day-item:last-child {
+            border-bottom: none;
+        }
+
+        .day-name {
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.9rem;
+        }
+
+        .workout-type {
+            color: #667eea;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .view-plan-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.75rem 1.25rem;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .view-plan-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .plan-overview {
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .plan-overview-title {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .plan-overview-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: #374151;
+        }
+
+        @media (max-width: 1200px) {
+            .ai-plans-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
         @media (max-width: 768px) {
             .dashboard-container {
                 padding: 1rem;
@@ -310,419 +547,748 @@
                 text-align: center;
             }
 
+            .header-actions {
+                justify-content: center;
+            }
+
             .dashboard-grid {
                 grid-template-columns: 1fr;
             }
 
             .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .recommendation-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(2, 1fr);
             }
 
             .user-info h1 {
                 font-size: 1.5rem;
             }
+
+            .targets-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
 
-        .alert {
-            background: linear-gradient(135deg, #fef3c7, #fde68a);
-            border: 2px solid #f59e0b;
-            border-radius: 15px;
-            padding: 1rem 1.5rem;
-            margin-bottom: 1rem;
-            color: #92400e;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .alert-icon {
-            font-size: 1.5rem;
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .targets-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
     <div class="dashboard-container">
         <!-- Header -->
         <div class="header">
             <div class="user-info">
-                <h1>Welcome back, Alex! 👋</h1>
-                <p>Here's your health summary for this week</p>
+                <h1>Welcome back, {{ user.name }}! 📊</h1>
+                <p>Track your daily metrics and see your progress over time</p>
             </div>
-            <div class="streak-info">
-                <div>
-                    <div class="streak-number">12</div>
-                    <div>Day Streak</div>
-                </div>
-                <div style="font-size: 2rem;">🔥</div>
-            </div>
-        </div>
-
-        <!-- Quick Stats -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-value">68.5<span style="font-size: 1rem; color: #10b981;">↓</span></div>
-                <div class="stat-label">Current Weight (kg)</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">7.5</div>
-                <div class="stat-label">Avg Sleep (hours)</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">8,450</div>
-                <div class="stat-label">Daily Steps</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">4<span style="font-size: 1rem; color: #10b981;">↓</span></div>
-                <div class="stat-label">Stress Level</div>
-            </div>
-        </div>
-
-        <!-- Main Dashboard Grid -->
-        <div class="dashboard-grid">
-            <!-- Weight Progress Chart -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-icon">📈</div>
-                    <div class="card-title">Weight Progress</div>
-                </div>
-                <div class="chart-container">
-                    <canvas id="weightChart"></canvas>
-                </div>
-                <div class="mood-indicator">
-                    <span>📉</span>
-                    <span>Great progress! You've lost 2.5kg this month</span>
-                </div>
-            </div>
-
-            <!-- Sleep & Activity Chart -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-icon">😴</div>
-                    <div class="card-title">Sleep & Activity</div>
-                </div>
-                <div class="chart-container">
-                    <canvas id="sleepChart"></canvas>
-                </div>
-                <div class="mood-indicator">
-                    <span>⚡</span>
-                    <span>Your sleep quality is improving!</span>
-                </div>
-            </div>
-
-            <!-- Stress & Mood Tracking -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-icon">🧠</div>
-                    <div class="card-title">Stress & Mood</div>
-                </div>
-                <div class="chart-container">
-                    <canvas id="stressChart"></canvas>
-                </div>
-                <div class="mood-indicator">
-                    <span>😊</span>
-                    <span>Current Mood: Happy</span>
-                </div>
-            </div>
-
-            <!-- Nutrition Overview -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-icon">🍎</div>
-                    <div class="card-title">Nutrition Overview</div>
-                </div>
-                <div class="chart-container">
-                    <canvas id="nutritionChart"></canvas>
-                </div>
-                <div class="insights-grid">
-                    <div class="insight-item">
-                        <div class="insight-icon">💧</div>
-                        <div class="insight-text">Water intake: 2.1L/day</div>
+            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                <div class="streak-info">
+                    <div>
+                        <div class="streak-number">{{ current_streak }}</div>
+                        <div>Day Streak</div>
                     </div>
-                    <div class="insight-item">
-                        <div class="insight-icon">🥗</div>
-                        <div class="insight-text">Diet: Vegetarian</div>
-                    </div>
+                    <div style="font-size: 2rem;">🔥</div>
+                </div>
+                <div class="header-actions">
+                    {% if has_today_record %}
+                        <span class="add-data-btn disabled" title="You've already submitted data for today">
+                            ✅ Today's Data Submitted
+                        </span>
+                    {% else %}
+                        <a href="{% url 'form' %}" class="add-data-btn">
+                            📝 Add Today's Data
+                        </a>
+                    {% endif %}
+                    <a href="{% url 'logout' %}" class="logout-btn">Logout</a>
                 </div>
             </div>
         </div>
 
-        <!-- Recommendations Section -->
-        <div class="card recommendations">
-            <div class="card-header">
-                <div class="card-icon">💡</div>
-                <div class="card-title">Personalized Recommendations</div>
+        {% if not weekly_stats %}
+            <!-- No Data Message -->
+            <div class="no-data-message">
+                <h2>🌱 Start Your Health Journey</h2>
+                <p>You haven't logged any health data yet. Start tracking your daily metrics to see beautiful insights and progress!</p>
+                <a href="{% url 'form' %}" class="add-data-btn">
+                    📝 Log Your First Entry
+                </a>
             </div>
-            
-            <div class="alert">
-                <div class="alert-icon">⚠️</div>
-                <div>Your water intake is below recommended levels. Try to drink at least 2.5L daily for optimal health.</div>
+        {% else %}
+            <!-- Quick Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">{{ weekly_stats.avg_sleep }}</div>
+                    <div class="stat-label">Avg Sleep Hours</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ weekly_stats.avg_sleep_quality }}</div>
+                    <div class="stat-label">Sleep Quality (1-5)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ weekly_stats.avg_calories|floatformat:0 }}</div>
+                    <div class="stat-label">Daily Calories</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ weekly_stats.avg_water }}L</div>
+                    <div class="stat-label">Water Intake</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ weekly_stats.avg_workout_duration|floatformat:0 }}</div>
+                    <div class="stat-label">Workout Minutes</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ weekly_stats.avg_junk_food }}</div>
+                    <div class="stat-label">Junk Food Level</div>
+                </div>
             </div>
 
-            <div class="recommendation-grid">
-                <!-- Workout Routine -->
-                <div class="recommendation-card">
-                    <div class="recommendation-header">
-                        <div class="recommendation-icon">💪</div>
-                        <div class="recommendation-title">This Week's Workout Plan</div>
+            <!-- Main Dashboard Grid -->
+            <div class="dashboard-grid">
+                <!-- Sleep Tracking Chart -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon">😴</div>
+                        <div class="card-title">Sleep Tracking</div>
                     </div>
-                    <div class="recommendation-content">
-                        <p><strong>Focus:</strong> Weight Loss & Cardio</p>
-                        <ul>
-                            <li><strong>Monday:</strong> 30-min brisk walk + 15-min strength training</li>
-                            <li><strong>Wednesday:</strong> 45-min cycling or swimming</li>
-                            <li><strong>Friday:</strong> 20-min HIIT workout + stretching</li>
-                            <li><strong>Weekend:</strong> Outdoor activity (hiking, sports)</li>
-                        </ul>
-                        <div class="progress-indicator">
-                            <div class="progress-bar" style="width: 60%"></div>
+                    <div class="chart-container">
+                        <canvas id="sleepChart"></canvas>
+                    </div>
+                    <div class="insights-grid">
+                        <div class="insight-item">
+                            <div class="insight-icon">⏰</div>
+                            <div class="insight-text">{{ weekly_stats.total_days }}/7 days tracked</div>
                         </div>
-                        <p style="font-size: 0.875rem; color: #6b7280;">Weekly progress: 60% complete</p>
-                    </div>
-                </div>
-
-                <!-- Diet Plan -->
-                <div class="recommendation-card">
-                    <div class="recommendation-header">
-                        <div class="recommendation-icon">🥗</div>
-                        <div class="recommendation-title">Nutrition Guidelines</div>
-                    </div>
-                    <div class="recommendation-content">
-                        <p><strong>Goal:</strong> Healthy Weight Loss (1800 cal/day)</p>
-                        <ul>
-                            <li><strong>Breakfast:</strong> Oatmeal with fruits & nuts (400 cal)</li>
-                            <li><strong>Lunch:</strong> Quinoa salad with vegetables (500 cal)</li>
-                            <li><strong>Dinner:</strong> Grilled vegetables with tofu (450 cal)</li>
-                            <li><strong>Snacks:</strong> Greek yogurt, fruits, nuts (450 cal)</li>
-                        </ul>
-                        <div class="progress-indicator">
-                            <div class="progress-bar" style="width: 75%"></div>
+                        <div class="insight-item">
+                            <div class="insight-icon">☀️</div>
+                            <div class="insight-text">Quality: {{ weekly_stats.avg_sleep_quality }}/5</div>
                         </div>
-                        <p style="font-size: 0.875rem; color: #6b7280;">Nutrition goals: 75% on track</p>
                     </div>
                 </div>
 
-                <!-- Health Tips -->
-                <div class="recommendation-card">
-                    <div class="recommendation-header">
-                        <div class="recommendation-icon">🎯</div>
-                        <div class="recommendation-title">Health Tips</div>
+                <!-- Daily Calories & Macros -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon">🍽️</div>
+                        <div class="card-title">Daily Nutrition</div>
                     </div>
-                    <div class="recommendation-content">
-                        <p><strong>This Week's Focus Areas:</strong></p>
-                        <ul>
-                            <li>Increase water intake to 2.5-3L daily</li>
-                            <li>Practice 10-min meditation for stress reduction</li>
-                            <li>Aim for 8 hours of quality sleep</li>
-                            <li>Take short walks after meals</li>
-                            <li>Include more fiber-rich foods in diet</li>
-                        </ul>
-                        <div class="insights-grid" style="margin-top: 1rem;">
-                            <div class="insight-item">
-                                <div class="insight-icon">😴</div>
-                                <div class="insight-text">Sleep quality: Good</div>
+                    <div class="chart-container">
+                        <canvas id="nutritionChart"></canvas>
+                    </div>
+                    <div class="mood-indicator">
+                        <span>📊</span>
+                        <span>Tracking calories and hydration</span>
+                    </div>
+                </div>
+
+                <!-- Water & Junk Food Tracking -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon">💧</div>
+                        <div class="card-title">Hydration & Diet Quality</div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="hydrationChart"></canvas>
+                    </div>
+                    <div class="insights-grid">
+                        <div class="insight-item">
+                            <div class="insight-icon">💧</div>
+                            <div class="insight-text">Daily water: {{ weekly_stats.avg_water }}L avg</div>
+                        </div>
+                        <div class="insight-item">
+                            <div class="insight-icon">🚫</div>
+                            <div class="insight-text">Junk food: {{ weekly_stats.avg_junk_food }}/4 avg</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Workout Analysis -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon">💪</div>
+                        <div class="card-title">Workout Analysis</div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="workoutChart"></canvas>
+                    </div>
+                    <div class="mood-indicator">
+                        <span>⚡</span>
+                        <span>Most popular: {{ weekly_stats.most_popular_workout|title }}</span>
+                    </div>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="summary-cards">
+                    <div class="summary-card">
+                        <div class="summary-title">
+                            <span>📈</span>
+                            Weekly Sleep Summary
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Average Hours</span>
+                            <span class="metric-value">{{ weekly_stats.avg_sleep }} hrs</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Average Quality</span>
+                            <span class="metric-value">{{ weekly_stats.avg_sleep_quality }}/5</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Days Tracked</span>
+                            <span class="metric-value">{{ weekly_stats.total_days }}/7</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Sleep Consistency</span>
+                            <span class="metric-value">{% if weekly_stats.avg_sleep >= 7 %}Good{% else %}Needs Improvement{% endif %}</span>
+                        </div>
+                    </div>
+
+                    <div class="summary-card">
+                        <div class="summary-title">
+                            <span>🥗</span>
+                            Nutrition Summary
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Daily Calories</span>
+                            <span class="metric-value">{{ weekly_stats.avg_calories|floatformat:0 }} avg</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Water Intake</span>
+                            <span class="metric-value">{{ weekly_stats.avg_water }}L avg</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Junk Food Level</span>
+                            <span class="metric-value">{{ weekly_stats.avg_junk_food }}/4 avg</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Diet Quality</span>
+                            <span class="metric-value">{% if weekly_stats.avg_junk_food <= 1.5 %}Excellent{% elif weekly_stats.avg_junk_food <= 2.5 %}Good{% else %}Needs Work{% endif %}</span>
+                        </div>
+                    </div>
+
+                    <div class="summary-card">
+                        <div class="summary-title">
+                            <span>💪</span>
+                            Workout Summary
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Active Days</span>
+                            <span class="metric-value">{{ weekly_stats.active_days }}/{{ weekly_stats.total_days }} days</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Average Duration</span>
+                            <span class="metric-value">{{ weekly_stats.avg_workout_duration|floatformat:0 }} minutes</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Most Popular</span>
+                            <span class="metric-value">{{ weekly_stats.most_popular_workout|title }}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Consistency</span>
+                            <span class="metric-value">{% if weekly_stats.active_days >= 5 %}Excellent{% elif weekly_stats.active_days >= 3 %}Good{% else %}Needs Work{% endif %}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Plans Section -->
+            {% if combined_plan %}
+                <div class="ai-plans-section">
+                    <!-- Diet Plan Card -->
+                    <div class="plan-card">
+                        <div class="plan-header">
+                            <div class="plan-title-group">
+                                <div class="card-icon">🥗</div>
+                                <div class="card-title">AI Diet Plan</div>
                             </div>
-                            <div class="insight-item">
-                                <div class="insight-icon">🧘</div>
-                                <div class="insight-text">Try stress-relief apps</div>
+                            <div class="ai-badge">AI Powered</div>
+                        </div>
+                        
+                        <div class="plan-type-badge">
+                            📋 {{ combined_plan.diet_plan.plan_style|title }} Plan
+                        </div>
+                        
+                        <p style="color: #374151; line-height: 1.6; margin-bottom: 1rem; font-size: 0.95rem;">
+                            {{ combined_plan.diet_plan.headline }}
+                        </p>
+                        
+                        <div class="plan-overview">
+                            <div class="plan-overview-title">
+                                Based on your weekly averages:
+                            </div>
+                            <div class="plan-overview-grid">
+                                <div>Sleep: {{ weekly_stats.avg_sleep }}h</div>
+                                <div>Calories: {{ weekly_stats.avg_calories|floatformat:0 }}</div>
+                                <div>Water: {{ weekly_stats.avg_water }}L</div>
+                                <div>Active: {{ weekly_stats.active_days }}/7 days</div>
+                            </div>
+                        </div>
+                        
+                        <h4 style="color: #374151; font-size: 1rem; margin-bottom: 1rem; font-weight: 600;">Daily Targets</h4>
+                        <div class="targets-grid">
+                            <div class="mini-target-card" style="background: rgba(102, 126, 234, 0.05); border-radius: 12px; padding: 1rem; text-align: center;">
+                                <div style="font-size: 1.2rem; font-weight: 700; color: #667eea;">{{ combined_plan.diet_plan.targets.calories_kcal }}</div>
+                                <div style="font-size: 0.75rem; color: #6b7280;">Calories</div>
+                            </div>
+                            
+                            <div class="mini-target-card" style="background: rgba(102, 126, 234, 0.05); border-radius: 12px; padding: 1rem; text-align: center;">
+                                <div style="font-size: 1.2rem; font-weight: 700; color: #667eea;">{{ combined_plan.diet_plan.targets.protein_g }}g</div>
+                                <div style="font-size: 0.75rem; color: #6b7280;">Protein</div>
+                            </div>
+                            
+                            <div class="mini-target-card" style="background: rgba(102, 126, 234, 0.05); border-radius: 12px; padding: 1rem; text-align: center;">
+                                <div style="font-size: 1.2rem; font-weight: 700; color: #667eea;">{{ combined_plan.diet_plan.targets.water_l }}L</div>
+                                <div style="font-size: 0.75rem; color: #6b7280;">Water</div>
+                            </div>
+                            
+                            <div class="mini-target-card" style="background: rgba(102, 126, 234, 0.05); border-radius: 12px; padding: 1rem; text-align: center;">
+                                <div style="font-size: 1.2rem; font-weight: 700; color: #667eea;">{{ combined_plan.diet_plan.targets.carbs_g }}g</div>
+                                <div style="font-size: 0.75rem; color: #6b7280;">Carbs</div>
+                            </div>
+                            
+                            <div class="mini-target-card" style="background: rgba(102, 126, 234, 0.05); border-radius: 12px; padding: 1rem; text-align: center;">
+                                <div style="font-size: 1.2rem; font-weight: 700; color: #667eea;">{{ combined_plan.diet_plan.targets.sleep_h }}h</div>
+                                <div style="font-size: 0.75rem; color: #6b7280;">Sleep</div>
+                            </div>
+                            
+                            <div class="mini-target-card" style="background: linear-gradient(135deg, #10b981, #059669); border-radius: 12px; padding: 1rem; text-align: center; color: white;">
+                                <div style="font-size: 0.9rem; font-weight: 600;">Updated Weekly</div>
+                                <div style="font-size: 0.7rem; opacity: 0.9;">Keep tracking!</div>
+                            </div>
+                        </div>
+                        
+                        <a href="{% url 'diet_plan' %}" class="view-plan-btn">
+                            📋 View Full Diet Plan
+                        </a>
+                    </div>
+
+                    <!-- Workout Plan Card -->
+                    <div class="plan-card">
+                        <div class="plan-header">
+                            <div class="plan-title-group">
+                                <div class="card-icon">💪</div>
+                                <div class="card-title">AI Workout Plan</div>
+                            </div>
+                            <div class="ai-badge">AI Powered</div>
+                        </div>
+                        
+                        <div class="plan-type-badge">
+                            🏋️ {{ combined_plan.workout_plan.predicted_label|title }} Program
+                        </div>
+                        
+                        <p style="color: #374151; line-height: 1.6; margin-bottom: 1rem; font-size: 0.95rem;">
+                            Personalized workout schedule based on your fitness patterns and goals
+                        </p>
+                        
+                        <div class="plan-overview">
+                            <div class="plan-overview-title">
+                                This week's focus:
+                            </div>
+                            <div style="color: #374151; font-size: 0.9rem; font-weight: 500;">
+                                {{ combined_plan.workout_plan.predicted_label|title }} training optimized for your current fitness level
+                            </div>
+                        </div>
+                        
+                        <h4 style="color: #374151; font-size: 1rem; margin-bottom: 1rem; font-weight: 600;">Weekly Schedule</h4>
+                        <div class="workout-schedule">
+                            {% for day, workout in combined_plan.workout_plan.weekly_schedule.items %}
+                                <div class="day-item">
+                                    <span class="day-name">{{ day|title }}</span>
+                                    <span class="workout-type">{{ workout }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <a href="{% url 'workout_plan' %}" class="view-plan-btn">
+                            🏋️ View Full Workout Plan
+                        </a>
+                        
+                        
+                    </div>
+                </div>
+            {% else %}
+                <!-- No AI Plans Available -->
+                <div class="ai-plans-section">
+                    <div class="plan-card">
+                        <div class="plan-header">
+                            <div class="plan-title-group">
+                                <div class="card-icon">🥗</div>
+                                <div class="card-title">AI Diet Plan</div>
+                            </div>
+                        </div>
+                        
+                        <div style="text-align: center; padding: 2rem;">
+                            <div style="background: rgba(102, 126, 234, 0.1); border-radius: 50%; width: 80px; height: 80px; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; font-size: 2rem;">
+                                🤖
+                            </div>
+                            <h3 style="color: #374151; margin-bottom: 1rem;">AI Diet Plan Coming Soon!</h3>
+                            <p style="color: #6b7280; margin-bottom: 2rem; line-height: 1.6;">
+                                Keep tracking your daily health data. Once you have at least 3 days of records, 
+                                our AI will generate a personalized diet plan based on your patterns and goals.
+                            </p>
+                            <div style="background: rgba(102, 126, 234, 0.05); border-radius: 10px; padding: 1rem; display: inline-block;">
+                                <div style="font-size: 0.9rem; color: #667eea; font-weight: 600;">
+                                    Progress: {{ total_records }}/3 days needed
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="plan-card">
+                        <div class="plan-header">
+                            <div class="plan-title-group">
+                                <div class="card-icon">💪</div>
+                                <div class="card-title">AI Workout Plan</div>
+                            </div>
+                        </div>
+                        
+                        <div style="text-align: center; padding: 2rem;">
+                            <div style="background: rgba(102, 126, 234, 0.1); border-radius: 50%; width: 80px; height: 80px; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; font-size: 2rem;">
+                                🏋️
+                            </div>
+                            <h3 style="color: #374151; margin-bottom: 1rem;">AI Workout Plan Coming Soon!</h3>
+                            <p style="color: #6b7280; margin-bottom: 2rem; line-height: 1.6;">
+                                Continue logging your workouts and health metrics. Our AI will create a 
+                                personalized workout schedule tailored to your fitness level and goals.
+                            </p>
+                            <div style="background: rgba(102, 126, 234, 0.05); border-radius: 10px; padding: 1rem; display: inline-block;">
+                                <div style="font-size: 0.9rem; color: #667eea; font-weight: 600;">
+                                    Progress: {{ total_records }}/3 days needed
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <!-- Progress Insights -->
-                <div class="recommendation-card">
-                    <div class="recommendation-header">
-                        <div class="recommendation-icon">📊</div>
-                        <div class="recommendation-title">Weekly Insights</div>
-                    </div>
-                    <div class="recommendation-content">
-                        <p><strong>Key Achievements:</strong></p>
-                        <ul>
-                            <li>✅ Lost 0.5kg this week</li>
-                            <li>✅ Maintained consistent workout schedule</li>
-                            <li>✅ Reduced stress levels significantly</li>
-                            <li>⚠️ Need to improve water intake</li>
-                            <li>⚠️ Sleep could be more consistent</li>
-                        </ul>
-                        <div style="margin-top: 1rem; padding: 1rem; background: rgba(16, 185, 129, 0.1); border-radius: 10px; border-left: 4px solid #10b981;">
-                            <strong style="color: #065f46;">Motivation:</strong> You're doing great! Keep up the consistent effort and you'll reach your goal weight of 65kg by next month.
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+            {% endif %}
+        {% endif %}
     </div>
 
+    {% if weekly_stats %}
     <script>
-        // Chart.js configuration
-        Chart.defaults.font.family = "'Inter', sans-serif";
-        Chart.defaults.color = '#6b7280';
+        // Get chart data from Django context
+const chartData = {{ chart_data|safe }};
 
-        // Weight Progress Chart
-        const weightCtx = document.getElementById('weightChart').getContext('2d');
-        new Chart(weightCtx, {
-            type: 'line',
-            data: {
-                labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6'],
-                datasets: [{
-                    label: 'Weight (kg)',
-                    data: [71, 70.2, 69.8, 69.1, 68.9, 68.5],
-                    borderColor: '#667eea',
-                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                    borderWidth: 3,
-                    fill: true,
-                    tension: 0.4,
-                    pointBackgroundColor: '#667eea',
-                    pointBorderColor: '#ffffff',
-                    pointBorderWidth: 2,
-                    pointRadius: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: false,
-                        min: 65,
-                        max: 72,
-                        grid: { color: 'rgba(0,0,0,0.1)' }
-                    },
-                    x: {
-                        grid: { color: 'rgba(0,0,0,0.1)' }
+console.log('Chart data received:', chartData); // Debug log
+
+// Chart.js configuration
+Chart.defaults.font.family = "'Inter', sans-serif";
+Chart.defaults.color = '#6b7280';
+
+// Chart.js default configuration for handling null values
+Chart.defaults.plugins.legend.display = true;
+Chart.defaults.elements.point.radius = 4;
+Chart.defaults.elements.point.hoverRadius = 6;
+
+// Sleep Hours & Quality Chart
+const sleepCtx = document.getElementById('sleepChart').getContext('2d');
+new Chart(sleepCtx, {
+    type: 'line',
+    data: {
+        labels: chartData.dates || [],
+        datasets: [{
+            label: 'Sleep Hours',
+            data: chartData.sleep_hours || [],
+            borderColor: '#667eea',
+            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4,
+            yAxisID: 'y',
+            spanGaps: true // Connect line across null values
+        }, {
+            label: 'Sleep Quality (1-5)',
+            data: chartData.sleep_quality || [],
+            borderColor: '#764ba2',
+            backgroundColor: 'rgba(118, 75, 162, 0.1)',
+            borderWidth: 3,
+            fill: false,
+            tension: 0.4,
+            yAxisID: 'y1',
+            spanGaps: true
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'top' },
+            tooltip: {
+                mode: 'index',
+                intersect: false,
+                callbacks: {
+                    beforeBody: function(tooltipItems) {
+                        // Check if all values are null/undefined
+                        const hasData = tooltipItems.some(item => 
+                            item.raw !== null && item.raw !== undefined
+                        );
+                        if (!hasData) {
+                            return ['No data recorded for this day'];
+                        }
+                        return [];
                     }
                 }
             }
-        });
-
-        // Sleep & Activity Chart
-        const sleepCtx = document.getElementById('sleepChart').getContext('2d');
-        new Chart(sleepCtx, {
-            type: 'bar',
-            data: {
-                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-                datasets: [{
-                    label: 'Sleep Hours',
-                    data: [7.5, 8, 7, 7.5, 8.5, 9, 8],
-                    backgroundColor: 'rgba(102, 126, 234, 0.8)',
-                    borderColor: '#667eea',
-                    borderWidth: 1,
-                    borderRadius: 8
-                }, {
-                    label: 'Workout Minutes',
-                    data: [30, 0, 45, 30, 0, 60, 20],
-                    backgroundColor: 'rgba(118, 75, 162, 0.8)',
-                    borderColor: '#764ba2',
-                    borderWidth: 1,
-                    borderRadius: 8
-                }]
+        },
+        scales: {
+            y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                min: 0,
+                max: 12,
+                title: { display: true, text: 'Hours' },
+                grid: { color: 'rgba(0,0,0,0.1)' }
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'bottom' }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: 'rgba(0,0,0,0.1)' }
-                    },
-                    x: {
-                        grid: { color: 'rgba(0,0,0,0.1)' }
+            y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                min: 1,
+                max: 5,
+                title: { display: true, text: 'Quality (1-5)' },
+                grid: { drawOnChartArea: false }
+            }
+        },
+        interaction: {
+            mode: 'index',
+            intersect: false,
+        }
+    }
+});
+
+// Nutrition - Calories & Water
+const nutritionCtx = document.getElementById('nutritionChart').getContext('2d');
+new Chart(nutritionCtx, {
+    type: 'line',
+    data: {
+        labels: chartData.dates || [],
+        datasets: [{
+            label: 'Total Calories',
+            data: chartData.calories || [],
+            borderColor: '#667eea',
+            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4,
+            yAxisID: 'y',
+            spanGaps: true
+        }, {
+            label: 'Water (L)',
+            data: chartData.water_intake || [],
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            borderWidth: 2,
+            fill: false,
+            tension: 0.4,
+            yAxisID: 'y1',
+            spanGaps: true
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'top' },
+            tooltip: {
+                mode: 'index',
+                intersect: false,
+                callbacks: {
+                    beforeBody: function(tooltipItems) {
+                        const hasData = tooltipItems.some(item => 
+                            item.raw !== null && item.raw !== undefined
+                        );
+                        if (!hasData) {
+                            return ['No data recorded for this day'];
+                        }
+                        return [];
                     }
                 }
             }
-        });
-
-        // Stress & Mood Chart
-        const stressCtx = document.getElementById('stressChart').getContext('2d');
-        new Chart(stressCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Low Stress (1-3)', 'Medium Stress (4-6)', 'High Stress (7-10)'],
-                datasets: [{
-                    data: [60, 35, 5],
-                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
-                    borderWidth: 0
-                }]
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Calories' },
+                grid: { color: 'rgba(0,0,0,0.1)' }
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'bottom' }
-                }
+            y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                min: 0,
+                max: 5,
+                title: { display: true, text: 'Water (L)' },
+                grid: { drawOnChartArea: false }
             }
-        });
+        },
+        interaction: {
+            mode: 'index',
+            intersect: false,
+        }
+    }
+});
 
-        // Nutrition Chart
-        const nutritionCtx = document.getElementById('nutritionChart').getContext('2d');
-        new Chart(nutritionCtx, {
-            type: 'radar',
-            data: {
-                labels: ['Proteins', 'Carbs', 'Fats', 'Fiber', 'Vitamins', 'Water'],
-                datasets: [{
-                    label: 'Current Intake',
-                    data: [70, 60, 55, 80, 85, 65],
-                    borderColor: '#667eea',
-                    backgroundColor: 'rgba(102, 126, 234, 0.2)',
-                    borderWidth: 2
-                }, {
-                    label: 'Recommended',
-                    data: [80, 70, 60, 90, 90, 85],
-                    borderColor: '#10b981',
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'bottom' }
-                },
-                scales: {
-                    r: {
-                        beginAtZero: true,
-                        max: 100,
-                        grid: { color: 'rgba(0,0,0,0.1)' }
+// Water Intake & Junk Food Level
+const hydrationCtx = document.getElementById('hydrationChart').getContext('2d');
+new Chart(hydrationCtx, {
+    type: 'bar',
+    data: {
+        labels: chartData.dates || [],
+        datasets: [{
+            label: 'Water Intake (L)',
+            data: chartData.water_intake || [],
+            backgroundColor: 'rgba(59, 130, 246, 0.8)',
+            borderColor: '#3b82f6',
+            borderWidth: 1,
+            yAxisID: 'y'
+        }, {
+            label: 'Junk Food Level (0-4)',
+            data: chartData.junk_food_levels || [],
+            backgroundColor: 'rgba(239, 68, 68, 0.8)',
+            borderColor: '#ef4444',
+            borderWidth: 1,
+            yAxisID: 'y1'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'top' },
+            tooltip: {
+                callbacks: {
+                    beforeBody: function(tooltipItems) {
+                        const hasData = tooltipItems.some(item => 
+                            item.raw !== null && item.raw !== undefined
+                        );
+                        if (!hasData) {
+                            return ['No data recorded for this day'];
+                        }
+                        return [];
                     }
                 }
             }
-        });
+        },
+        scales: {
+            y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                min: 0,
+                max: 5,
+                title: { display: true, text: 'Water (L)' },
+                grid: { color: 'rgba(0,0,0,0.1)' }
+            },
+            y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                min: 0,
+                max: 4,
+                title: { display: true, text: 'Junk Food Level' },
+                grid: { drawOnChartArea: false }
+            }
+        }
+    }
+});
 
-        // Add some interactive animations
-        document.querySelectorAll('.card').forEach(card => {
-            card.addEventListener('mouseenter', function() {
-                this.style.transform = 'translateY(-5px) scale(1.02)';
-            });
-            
-            card.addEventListener('mouseleave', function() {
-                this.style.transform = 'translateY(0) scale(1)';
-            });
-        });
-
-        // Simulate real-time updates
-        setInterval(() => {
-            const streakElement = document.querySelector('.streak-number');
-            if (streakElement) {
-                const currentStreak = parseInt(streakElement.textContent);
-                // Simulate small changes for demo purposes
-                if (Math.random() > 0.9) {
-                    streakElement.style.transform = 'scale(1.1)';
-                    setTimeout(() => {
-                        streakElement.style.transform = 'scale(1)';
-                    }, 200);
+// Workout Duration
+const workoutCtx = document.getElementById('workoutChart').getContext('2d');
+new Chart(workoutCtx, {
+    type: 'bar',
+    data: {
+        labels: chartData.dates || [],
+        datasets: [{
+            label: 'Workout Duration (minutes)',
+            data: chartData.workout_duration || [],
+            backgroundColor: 'rgba(102, 126, 234, 0.8)',
+            borderColor: '#667eea',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'top' },
+            tooltip: {
+                callbacks: {
+                    beforeBody: function(tooltipItems) {
+                        const hasData = tooltipItems.some(item => 
+                            item.raw !== null && item.raw !== undefined && item.raw > 0
+                        );
+                        if (!hasData) {
+                            return ['No workout recorded for this day'];
+                        }
+                        return [];
+                    }
                 }
+            }
+        },
+        scales: {
+            y: { 
+                beginAtZero: true,
+                title: { display: true, text: 'Minutes' },
+                grid: { color: 'rgba(0,0,0,0.1)' }
+            }
+        }
+    }
+});
+
+// Add interactive animations
+document.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-5px) scale(1.02)';
+    });
+    
+    card.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateY(0) scale(1)';
+    });
+});
+
+// Add some dynamic updates
+setInterval(() => {
+    const streakElement = document.querySelector('.streak-number');
+    if (streakElement && Math.random() > 0.95) {
+        streakElement.style.transform = 'scale(1.1)';
+        setTimeout(() => {
+            streakElement.style.transform = 'scale(1)';
+        }, 200);
+    }
+}, 3000);
+
+// Debug: Log chart data to console for troubleshooting
+console.log('Charts initialized with data:', {
+    dates: chartData.dates,
+    sleep_hours: chartData.sleep_hours,
+    sleep_quality: chartData.sleep_quality,
+    calories: chartData.calories,
+    water_intake: chartData.water_intake,
+    workout_duration: chartData.workout_duration,
+    junk_food_levels: chartData.junk_food_levels
+});
+    </script>
+    {% endif %}
+
+    <script>
+        // Auto-hide messages after 5 seconds
+        setTimeout(() => {
+            const messages = document.querySelector('.messages');
+            if (messages) {
+                messages.style.opacity = '0';
+                setTimeout(() => messages.remove(), 300);
             }
         }, 5000);
     </script>

@@ -1,0 +1,38 @@
+{
+  "Lose Weight": {
+    "Monday": "HIIT cardio + core circuit",
+    "Tuesday": "Full-body strength endurance",
+    "Wednesday": "Yoga + mobility",
+    "Thursday": "Interval running + bodyweight",
+    "Friday": "Strength + cardio mix",
+    "Saturday": "Long walk or cycling",
+    "Sunday": "Rest or light yoga"
+  },
+  "Build Muscle": {
+    "Monday": "Push (Chest, Shoulders, Triceps)",
+    "Tuesday": "Pull (Back, Biceps)",
+    "Wednesday": "Legs (Squats, Deadlifts, Lunges)",
+    "Thursday": "Mobility or Rest",
+    "Friday": "Upper body strength",
+    "Saturday": "Lower body hypertrophy",
+    "Sunday": "Rest"
+  },
+  "Improve Endurance": {
+    "Monday": "Interval running",
+    "Tuesday": "Core + mobility",
+    "Wednesday": "Long-distance run",
+    "Thursday": "Strength (legs focus)",
+    "Friday": "Tempo run",
+    "Saturday": "Cross-training (cycling/swim)",
+    "Sunday": "Rest"
+  },
+  "General Fitness": {
+    "Monday": "Full-body circuit",
+    "Tuesday": "Yoga or Pilates",
+    "Wednesday": "Strength training (upper focus)",
+    "Thursday": "Cardio + mobility",
+    "Friday": "Strength training (lower focus)",
+    "Saturday": "Outdoor activity (hike, sport)",
+    "Sunday": "Rest"
+  }
+}

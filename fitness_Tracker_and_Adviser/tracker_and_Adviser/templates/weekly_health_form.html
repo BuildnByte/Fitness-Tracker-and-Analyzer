@@ -3,7 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Weekly Health Check-In | FitTrack Pro</title>
+    <title>Daily Health Tracker | FitTrack Pro</title>
+    {% if messages %}
+        <style>
+            .messages {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 9999;
+                max-width: 400px;
+            }
+            .alert {
+                padding: 1rem 1.5rem;
+                border-radius: 8px;
+                margin-bottom: 1rem;
+                font-weight: 500;
+                animation: slideIn 0.3s ease-out;
+            }
+            .alert-success { background: #d1fae5; color: #065f46; border-left: 4px solid #10b981; }
+            .alert-error { background: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444; }
+            .alert-info { background: #dbeafe; color: #1e40af; border-left: 4px solid #3b82f6; }
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        </style>
+    {% endif %}
     <style>
         * {
             margin: 0;
@@ -30,10 +55,9 @@
             top: -50%;
             left: -50%;
             width: 200%;
-            height: 200%;
+            height: 100%;
             background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
             background-size: 50px 50px;
-            animation: float 20s linear infinite;
             z-index: 1;
         }
 
@@ -51,11 +75,10 @@
                 0 25px 50px rgba(0, 0, 0, 0.15),
                 0 0 0 1px rgba(255, 255, 255, 0.1);
             width: 100%;
-            max-width: 700px;
+            max-width: 800px;
             position: relative;
             z-index: 2;
             transform: translateY(0);
-            animation: slideUp 0.8s ease-out;
         }
 
         @keyframes slideUp {
@@ -67,6 +90,31 @@
                 opacity: 1; 
                 transform: translateY(0); 
             }
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .back-to-dashboard {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .back-to-dashboard:hover {
+            background: rgba(102, 126, 234, 0.2);
+            transform: translateY(-2px);
         }
 
         .logo {
@@ -105,15 +153,46 @@
         .subtitle {
             color: #6b7280;
             text-align: center;
-            margin-bottom: 2.5rem;
+            margin-bottom: 0.5rem;
             font-size: 0.95rem;
+        }
+
+        .date-display {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            padding: 1rem;
+            background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+            border-radius: 12px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .section {
+            margin-bottom: 2.5rem;
+            padding: 2rem;
+            background: rgba(249, 250, 251, 0.8);
+            border-radius: 16px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .section-title {
+            color: #374151;
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .section-icon {
+            font-size: 1.5rem;
         }
 
         .form-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 1.5rem;
-            margin-bottom: 2rem;
         }
 
         .form-group {
@@ -135,7 +214,7 @@
         .form-input, .form-select, .form-textarea {
             width: 100%;
             padding: 1rem 1.25rem;
-            background: #f9fafb;
+            background: white;
             border: 2px solid #e5e7eb;
             border-radius: 12px;
             font-size: 1rem;
@@ -145,7 +224,6 @@
         }
 
         .form-input:focus, .form-select:focus, .form-textarea:focus {
-            background: white;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
             transform: translateY(-1px);
@@ -165,41 +243,49 @@
             padding-right: 3rem;
         }
 
-        .form-textarea {
-            resize: vertical;
-            min-height: 100px;
+        .time-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
         }
 
-        .input-icon {
-            position: absolute;
-            left: 1rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #6b7280;
-            font-size: 1.1rem;
-            pointer-events: none;
+        .macro-inputs {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
         }
 
-        .form-input.with-icon {
-            padding-left: 3rem;
+        .meal-section {
+            margin-bottom: 1.5rem;
+            padding: 1.5rem;
+            background: white;
+            border-radius: 12px;
+            border: 2px solid #f3f4f6;
         }
 
-        .stress-levels {
+        .meal-title {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+
+        .scale-options {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
             gap: 0.5rem;
             margin-top: 0.5rem;
         }
 
-        .stress-option {
+        .scale-option {
             position: relative;
         }
 
-        .stress-option input[type="radio"] {
+        .scale-option input[type="radio"] {
             display: none;
         }
 
-        .stress-option label {
+        .scale-option label {
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -212,96 +298,25 @@
             font-size: 0.75rem;
             font-weight: 500;
             color: #6b7280;
+            text-align: center;
         }
 
-        .stress-option input[type="radio"]:checked + label {
+        .scale-option input[type="radio"]:checked + label {
             background: #667eea;
             border-color: #667eea;
             color: white;
             transform: translateY(-2px);
         }
 
-        .stress-number {
-            font-size: 1.2rem;
+        .scale-number {
+            font-size: 1.1rem;
             font-weight: bold;
             margin-bottom: 0.25rem;
         }
 
-        .submit-btn {
-            width: 100%;
-            padding: 1rem;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            font-size: 1rem;
-            font-weight: 600;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 1rem;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .submit-btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            transition: left 0.5s ease;
-        }
-
-        .submit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-        }
-
-        .submit-btn:hover::before {
-            left: 100%;
-        }
-
-        .submit-btn:active {
-            transform: translateY(0);
-        }
-
-        /* Loading state */
-        .submit-btn.loading {
-            pointer-events: none;
-            opacity: 0.8;
-        }
-
-        .submit-btn.loading::after {
-            content: '';
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            border: 2px solid transparent;
-            border-top: 2px solid white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .section-title {
-            color: #374151;
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin: 2rem 0 1rem 0;
-            padding-bottom: 0.5rem;
-            border-bottom: 2px solid #e5e7eb;
-            grid-column: 1 / -1;
-        }
-
         .goal-options {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
             gap: 1rem;
             margin-top: 0.5rem;
         }
@@ -318,8 +333,8 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 1rem;
-            background: #f9fafb;
+            padding: 1.25rem;
+            background: white;
             border: 2px solid #e5e7eb;
             border-radius: 12px;
             cursor: pointer;
@@ -338,8 +353,109 @@
         }
 
         .goal-icon {
+            font-size: 2rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .workout-type-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .workout-type-option input[type="checkbox"] {
+            display: none;
+        }
+
+        .workout-type-option label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1rem 0.75rem;
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #6b7280;
+        }
+
+        .workout-type-option input[type="checkbox"]:checked + label {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .workout-icon {
             font-size: 1.5rem;
             margin-bottom: 0.5rem;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 1.25rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .submit-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
+        }
+
+        .submit-btn:hover::before {
+            left: 100%;
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+            border-radius: 4px;
         }
 
         /* Responsive design */
@@ -356,11 +472,19 @@
                 grid-template-columns: 1fr;
             }
 
-            .stress-levels {
+            .time-inputs, .macro-inputs {
+                grid-template-columns: 1fr;
+            }
+
+            .scale-options {
                 grid-template-columns: repeat(3, 1fr);
             }
 
             .goal-options {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .workout-type-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
         }
@@ -374,275 +498,318 @@
                 padding: 1.5rem 1rem;
             }
 
-            .stress-levels {
-                grid-template-columns: repeat(2, 1fr);
+            .section {
+                padding: 1.5rem;
             }
 
-            .goal-options {
+            .scale-options, .goal-options, .workout-type-grid {
                 grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
 <body>
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
     <div class="container">
+        <div class="header-actions">
+            <a href="{% url 'dashboard' %}" class="back-to-dashboard">
+                ← Back to Dashboard
+            </a>
+            <div style="color: #6b7280; font-size: 0.9rem;">
+                Welcome, {{ user.name }}!
+            </div>
+        </div>
+
         <div class="logo">
             <div class="logo-icon">📊</div>
-            <h1>Weekly Health Check-In</h1>
-            <p class="subtitle">Track your progress and stay on top of your health goals</p>
+            <h1>Daily Health Tracker</h1>
+            <p class="subtitle">Track your daily health metrics and stay on top of your goals</p>
+        </div>
+
+        <div class="date-display" id="currentDate">
+            Today's Date
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
         </div>
 
         <form id="healthForm">
-            <div class="form-grid">
-                <div class="form-group">
-                    <label class="form-label" for="weight">Weight (kg)</label>
-                    <div style="position: relative;">
-                        <span class="input-icon">⚖️</span>
-                        <input type="number" id="weight" class="form-input with-icon" placeholder="65.0" step="0.1" required>
+            {% csrf_token %}
+            <!-- Sleep Section -->
+            <div class="section">
+                <h2 class="section-title">
+                    <span class="section-icon">😴</span>
+                    Sleep Tracking
+                </h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="sleepHours">Hours of Sleep</label>
+                        <input type="number" id="sleepHours" name="sleepHours" class="form-input" placeholder="8.0" step="0.5" min="0" max="24" required>
                     </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="sleep">Sleep Duration (avg hrs/night)</label>
-                    <div style="position: relative;">
-                        <span class="input-icon">😴</span>
-                        <input type="number" id="sleep" class="form-input with-icon" placeholder="8.0" step="0.1" min="0" max="24" required>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="water">Water Intake (liters/day)</label>
-                    <div style="position: relative;">
-                        <span class="input-icon">💧</span>
-                        <input type="number" id="water" class="form-input with-icon" placeholder="2.5" step="0.1" min="0" required>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="steps">Steps Walked (avg/day)</label>
-                    <div style="position: relative;">
-                        <span class="input-icon">👟</span>
-                        <input type="number" id="steps" class="form-input with-icon" placeholder="10000" min="0" required>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="workout">Workout Duration (mins/day)</label>
-                    <div style="position: relative;">
-                        <span class="input-icon">💪</span>
-                        <input type="number" id="workout" class="form-input with-icon" placeholder="30" min="0" required>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="calories">Calories Intake (avg/day)</label>
-                    <div style="position: relative;">
-                        <span class="input-icon">🍎</span>
-                        <input type="number" id="calories" class="form-input with-icon" placeholder="2000" min="0" required>
-                    </div>
-                </div>
-
-                <div class="form-group full-width">
-                    <label class="form-label">Stress Level (1 = Low, 10 = High)</label>
-                    <div class="stress-levels">
-                        <div class="stress-option">
-                            <input type="radio" id="stress1" name="stress" value="1" required>
-                            <label for="stress1">
-                                <span class="stress-number">1</span>
-                                <span>Low</span>
-                            </label>
-                        </div>
-                        <div class="stress-option">
-                            <input type="radio" id="stress2" name="stress" value="2">
-                            <label for="stress2">
-                                <span class="stress-number">2</span>
-                            </label>
-                        </div>
-                        <div class="stress-option">
-                            <input type="radio" id="stress3" name="stress" value="3">
-                            <label for="stress3">
-                                <span class="stress-number">3</span>
-                            </label>
-                        </div>
-                        <div class="stress-option">
-                            <input type="radio" id="stress4" name="stress" value="4">
-                            <label for="stress4">
-                                <span class="stress-number">4</span>
-                            </label>
-                        </div>
-                        <div class="stress-option">
-                            <input type="radio" id="stress5" name="stress" value="5">
-                            <label for="stress5">
-                                <span class="stress-number">5</span>
-                                <span>Med</span>
-                            </label>
-                        </div>
-                        <div class="stress-option">
-                            <input type="radio" id="stress6" name="stress" value="6">
-                            <label for="stress6">
-                                <span class="stress-number">6</span>
-                            </label>
-                        </div>
-                        <div class="stress-option">
-                            <input type="radio" id="stress7" name="stress" value="7">
-                            <label for="stress7">
-                                <span class="stress-number">7</span>
-                            </label>
-                        </div>
-                        <div class="stress-option">
-                            <input type="radio" id="stress8" name="stress" value="8">
-                            <label for="stress8">
-                                <span class="stress-number">8</span>
-                            </label>
-                        </div>
-                        <div class="stress-option">
-                            <input type="radio" id="stress9" name="stress" value="9">
-                            <label for="stress9">
-                                <span class="stress-number">9</span>
-                            </label>
-                        </div>
-                        <div class="stress-option">
-                            <input type="radio" id="stress10" name="stress" value="10">
-                            <label for="stress10">
-                                <span class="stress-number">10</span>
-                                <span>High</span>
-                            </label>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Sleep Quality (1-5 scale)</label>
+                        <div class="scale-options">
+                            <div class="scale-option">
+                                <input type="radio" id="quality1" name="sleepQuality" value="1" required>
+                                <label for="quality1">
+                                    <span class="scale-number">1</span>
+                                    <span>Poor</span>
+                                </label>
+                            </div>
+                            <div class="scale-option">
+                                <input type="radio" id="quality2" name="sleepQuality" value="2">
+                                <label for="quality2">
+                                    <span class="scale-number">2</span>
+                                    <span>Fair</span>
+                                </label>
+                            </div>
+                            <div class="scale-option">
+                                <input type="radio" id="quality3" name="sleepQuality" value="3">
+                                <label for="quality3">
+                                    <span class="scale-number">3</span>
+                                    <span>Good</span>
+                                </label>
+                            </div>
+                            <div class="scale-option">
+                                <input type="radio" id="quality4" name="sleepQuality" value="4">
+                                <label for="quality4">
+                                    <span class="scale-number">4</span>
+                                    <span>Great</span>
+                                </label>
+                            </div>
+                            <div class="scale-option">
+                                <input type="radio" id="quality5" name="sleepQuality" value="5">
+                                <label for="quality5">
+                                    <span class="scale-number">5</span>
+                                    <span>Perfect</span>
+                                </label>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="form-group">
-                    <label class="form-label" for="mood">Current Mood</label>
-                    <select id="mood" class="form-select" required>
-                        <option value="">Select your mood</option>
-                        <option value="Happy">😊 Happy</option>
-                        <option value="Neutral">😐 Neutral</option>
-                        <option value="Sad">😞 Sad</option>
-                        <option value="Stressed">😰 Stressed</option>
-                        <option value="Energetic">⚡ Energetic</option>
-                        <option value="Tired">😴 Tired</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="diet">Diet Type</label>
-                    <select id="diet" class="form-select" required>
-                        <option value="">Select diet type</option>
-                        <option value="Veg">🥗 Vegetarian</option>
-                        <option value="Non-Veg">🍖 Non-Vegetarian</option>
-                        <option value="Vegan">🌱 Vegan</option>
-                        <option value="Keto">🥑 Keto</option>
-                        <option value="Mediterranean">🫒 Mediterranean</option>
-                        <option value="Other">🍽️ Other</option>
-                    </select>
-                </div>
-
-                <div class="form-group full-width">
-                    <label class="form-label" for="issues">Health Issues (if any)</label>
-                    <textarea id="issues" class="form-textarea" placeholder="e.g., Diabetes, PCOS, High BP, Joint pain, etc." rows="3"></textarea>
-                </div>
-
-                <div class="form-group full-width">
-                    <label class="form-label">Primary Fitness Goal</label>
-                    <div class="goal-options">
-                        <div class="goal-option">
-                            <input type="radio" id="weight_loss" name="goal" value="weight_loss" required>
-                            <label for="weight_loss">
-                                <span class="goal-icon">📉</span>
-                                <span>Lose Weight</span>
-                            </label>
-                        </div>
-                        <div class="goal-option">
-                            <input type="radio" id="muscle_gain" name="goal" value="muscle_gain">
-                            <label for="muscle_gain">
-                                <span class="goal-icon">💪</span>
-                                <span>Gain Muscle</span>
-                            </label>
-                        </div>
-                        <div class="goal-option">
-                            <input type="radio" id="endurance" name="goal" value="endurance">
-                            <label for="endurance">
-                                <span class="goal-icon">🏃</span>
-                                <span>Improve Endurance</span>
-                            </label>
-                        </div>
-                        <div class="goal-option">
-                            <input type="radio" id="maintain" name="goal" value="maintain">
-                            <label for="maintain">
-                                <span class="goal-icon">⚖️</span>
-                                <span>Maintain Health</span>
-                            </label>
+                    <div class="form-group full-width">
+                        <label class="form-label">Sleep & Wake Times (Optional)</label>
+                        <div class="time-inputs">
+                            <div>
+                                <label class="form-label" for="bedtime">Bedtime</label>
+                                <input type="time" id="bedtime" class="form-input">
+                            </div>
+                            <div>
+                                <label class="form-label" for="waketime">Wake Time</label>
+                                <input type="time" id="waketime" class="form-input">
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
+            <!-- Diet Section -->
+            <div class="section">
+                <h2 class="section-title">
+                    <span class="section-icon">🍽️</span>
+                    Diet & Nutrition
+                </h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="totalCalories">Total Calories Consumed</label>
+                        <input type="number" id="totalCalories" class="form-input" placeholder="2000" min="0" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="waterIntake">Water Intake (Liters)</label>
+                        <input type="number" id="waterIntake" class="form-input" placeholder="2.5" step="0.1" min="0" required>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label class="form-label">Macronutrients (grams)</label>
+                        <div class="macro-inputs">
+                            <div>
+                                <label class="form-label" for="carbs">Carbs (g)</label>
+                                <input type="number" id="carbs" class="form-input" placeholder="250" min="0">
+                            </div>
+                            <div>
+                                <label class="form-label" for="protein">Protein (g)</label>
+                                <input type="number" id="protein" class="form-input" placeholder="100" min="0">
+                            </div>
+                            <div>
+                                <label class="form-label" for="fat">Fat (g)</label>
+                                <input type="number" id="fat" class="form-input" placeholder="70" min="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Meal Breakdown -->
+                    <div class="form-group full-width">
+                        <label class="form-label">Meal Breakdown (Calories per meal)</label>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                            <div>
+                                <label class="form-label" for="breakfast">Breakfast</label>
+                                <input type="number" id="breakfast" class="form-input" placeholder="400" min="0">
+                            </div>
+                            <div>
+                                <label class="form-label" for="lunch">Lunch</label>
+                                <input type="number" id="lunch" class="form-input" placeholder="600" min="0">
+                            </div>
+                            <div>
+                                <label class="form-label" for="dinner">Dinner</label>
+                                <input type="number" id="dinner" class="form-input" placeholder="700" min="0">
+                            </div>
+                            <div>
+                                <label class="form-label" for="snacks">Snacks</label>
+                                <input type="number" id="snacks" class="form-input" placeholder="300" min="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Junk Food Consumption</label>
+                        <div class="scale-options">
+                            <div class="scale-option">
+                                <input type="radio" id="junk0" name="junkFood" value="0" required>
+                                <label for="junk0">
+                                    <span class="scale-number">0</span>
+                                    <span>None</span>
+                                </label>
+                            </div>
+                            <div class="scale-option">
+                                <input type="radio" id="junk1" name="junkFood" value="1">
+                                <label for="junk1">
+                                    <span class="scale-number">1</span>
+                                    <span>Little</span>
+                                </label>
+                            </div>
+                            <div class="scale-option">
+                                <input type="radio" id="junk2" name="junkFood" value="2">
+                                <label for="junk2">
+                                    <span class="scale-number">2</span>
+                                    <span>Some</span>
+                                </label>
+                            </div>
+                            <div class="scale-option">
+                                <input type="radio" id="junk3" name="junkFood" value="3">
+                                <label for="junk3">
+                                    <span class="scale-number">3</span>
+                                    <span>Quite a bit</span>
+                                </label>
+                            </div>
+                            <div class="scale-option">
+                                <input type="radio" id="junk4" name="junkFood" value="4">
+                                <label for="junk4">
+                                    <span class="scale-number">4</span>
+                                    <span>Too much</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Workout Section -->
+            <div class="section">
+                <h2 class="section-title">
+                    <span class="section-icon">💪</span>
+                    Workout & Activity
+                </h2>
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label class="form-label">Workout Types (Select all that apply)</label>
+                        <div class="workout-type-grid">
+                            <div class="workout-type-option">
+                                <input type="checkbox" id="cardio" name="workoutTypes" value="cardio">
+                                <label for="cardio">
+                                    <span class="workout-icon">🏃</span>
+                                    <span>Cardio</span>
+                                </label>
+                            </div>
+                            <div class="workout-type-option">
+                                <input type="checkbox" id="strength" name="workoutTypes" value="strength">
+                                <label for="strength">
+                                    <span class="workout-icon">🏋️</span>
+                                    <span>Strength</span>
+                                </label>
+                            </div>
+                            <div class="workout-type-option">
+                                <input type="checkbox" id="yoga" name="workoutTypes" value="yoga">
+                                <label for="yoga">
+                                    <span class="workout-icon">🧘</span>
+                                    <span>Yoga</span>
+                                </label>
+                            </div>
+                            <div class="workout-type-option">
+                                <input type="checkbox" id="hiit" name="workoutTypes" value="hiit">
+                                <label for="hiit">
+                                    <span class="workout-icon">⚡</span>
+                                    <span>HIIT</span>
+                                </label>
+                            </div>
+                            <div class="workout-type-option">
+                                <input type="checkbox" id="walking" name="workoutTypes" value="walking">
+                                <label for="walking">
+                                    <span class="workout-icon">🚶</span>
+                                    <span>Walking</span>
+                                </label>
+                            </div>
+                            <div class="workout-type-option">
+                                <input type="checkbox" id="sports" name="workoutTypes" value="sports">
+                                <label for="sports">
+                                    <span class="workout-icon">⚽</span>
+                                    <span>Sports</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="workoutDuration">Total Duration (minutes)</label>
+                        <input type="number" id="workoutDuration" class="form-input" placeholder="45" min="0" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="workoutIntensity">Intensity Level</label>
+                        <select id="workoutIntensity" class="form-select" required>
+                            <option value="">Select intensity</option>
+                            <option value="low">🟢 Low (Light effort)</option>
+                            <option value="medium">🟡 Medium (Moderate effort)</option>
+                            <option value="high">🔴 High (Intense effort)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="caloriesBurned">Calories Burned (Optional)</label>
+                        <input type="number" id="caloriesBurned" class="form-input" placeholder="300" min="0">
+                    </div>
+                </div>
+            </div>
+
             <button type="submit" class="submit-btn" id="submitBtn">
-                Submit Weekly Health Report
+                Save Today's Health Data
             </button>
         </form>
     </div>
 
     <script>
-        // Form handling
-        document.getElementById('healthForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const submitBtn = document.getElementById('submitBtn');
-            submitBtn.classList.add('loading');
-            submitBtn.textContent = '';
-            
-            // Simulate form submission
-            setTimeout(() => {
-                submitBtn.classList.remove('loading');
-                submitBtn.textContent = 'Submit Weekly Health Report';
-                
-                // Show success message
-                alert('Health report submitted successfully! 🎉\nYour data has been recorded for this week.');
-                
-                // Optionally reset form
-                // this.reset();
-            }, 2000);
-        });
+        // Display current date
+        const today = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('currentDate').textContent = today.toLocaleDateString('en-US', options);
 
-        // Input animations and interactions
-        document.querySelectorAll('.form-input, .form-select, .form-textarea').forEach(input => {
-            input.addEventListener('focus', function() {
-                this.style.transform = 'translateY(-1px)';
-            });
-            
-            input.addEventListener('blur', function() {
-                this.style.transform = 'translateY(0)';
-            });
-        });
-
-        // Add some visual feedback for radio buttons
-        document.querySelectorAll('input[type="radio"]').forEach(radio => {
-            radio.addEventListener('change', function() {
-                // Add a subtle animation when selecting options
-                const label = this.nextElementSibling;
-                label.style.transform = 'scale(0.95)';
-                setTimeout(() => {
-                    label.style.transform = 'translateY(-2px)';
-                }, 100);
-            });
-        });
-
-        // Validate numeric inputs
-        document.querySelectorAll('input[type="number"]').forEach(input => {
-            input.addEventListener('input', function() {
-                if (this.value < 0) {
-                    this.value = 0;
-                }
-            });
-        });
-
-        // Add progress indication
+        // Progress tracking
         const formInputs = document.querySelectorAll('input[required], select[required]');
-        let completedFields = 0;
+        const progressFill = document.getElementById('progressFill');
 
         function updateProgress() {
-            completedFields = 0;
+            let completedFields = 0;
+            const totalRequiredFields = formInputs.length;
+
             formInputs.forEach(input => {
                 if (input.type === 'radio') {
                     if (document.querySelector(`input[name="${input.name}"]:checked`)) {
@@ -652,14 +819,184 @@
                     completedFields++;
                 }
             });
-            
-            const progress = (completedFields / formInputs.length) * 100;
-            console.log(`Form completion: ${Math.round(progress)}%`);
+
+            const progress = Math.round((completedFields / totalRequiredFields) * 100);
+            progressFill.style.width = `${progress}%`;
         }
 
+        // Add progress tracking listeners
         formInputs.forEach(input => {
             input.addEventListener('input', updateProgress);
             input.addEventListener('change', updateProgress);
+        });
+
+        // Auto-calculate total calories from meals
+        const mealInputs = ['breakfast', 'lunch', 'dinner', 'snacks'];
+        const totalCaloriesInput = document.getElementById('totalCalories');
+
+        function updateTotalCalories() {
+            let total = 0;
+            mealInputs.forEach(mealId => {
+                const value = parseInt(document.getElementById(mealId).value) || 0;
+                total += value;
+            });
+            if (total > 0) {
+                totalCaloriesInput.value = total;
+                updateProgress();
+            }
+        }
+
+        mealInputs.forEach(mealId => {
+            document.getElementById(mealId).addEventListener('input', updateTotalCalories);
+        });
+
+        // Alternative JavaScript approach - collect data by ID instead of FormData
+document.getElementById('healthForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.textContent = 'Saving...';
+    submitBtn.disabled = true;
+    console.log(document.getElementById('sleepHours').value);
+    // Collect data manually by element IDs
+    const data = {
+        // CSRF token
+        csrfmiddlewaretoken: document.querySelector('[name=csrfmiddlewaretoken]').value,
+        
+        // Sleep data
+        sleepHours: document.getElementById('sleepHours').value,
+        sleepQuality: document.querySelector('input[name="sleepQuality"]:checked')?.value || '',
+        bedtime: document.getElementById('bedtime').value,
+        waketime: document.getElementById('waketime').value,
+        
+        // Nutrition data
+        totalCalories: document.getElementById('totalCalories').value,
+        waterIntake: document.getElementById('waterIntake').value,
+        carbs: document.getElementById('carbs').value,
+        protein: document.getElementById('protein').value,
+        fat: document.getElementById('fat').value,
+        
+        // Meal breakdown
+        breakfast: document.getElementById('breakfast').value,
+        lunch: document.getElementById('lunch').value,
+        dinner: document.getElementById('dinner').value,
+        snacks: document.getElementById('snacks').value,
+        
+        junkFood: document.querySelector('input[name="junkFood"]:checked')?.value || '',
+        
+        // Workout data
+        workoutDuration: document.getElementById('workoutDuration').value,
+        workoutIntensity: document.getElementById('workoutIntensity').value,
+        caloriesBurned: document.getElementById('caloriesBurned').value,
+        
+        // Workout types
+        workoutTypes: Array.from(document.querySelectorAll('input[name="workoutTypes"]:checked'))
+                          .map(checkbox => checkbox.value),
+        
+        // Metadata
+        date: new Date().toISOString().split('T')[0],
+        timestamp: new Date().toISOString()
+    };
+
+    console.log('Collected data:', data); // Debug log
+
+    // Get CSRF token
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    // Submit to Django backend
+    fetch('/submit-health-data/', {  // Use your actual URL here
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            submitBtn.textContent = '✅ Data Saved Successfully!';
+            submitBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+            
+            alert('🎉 Your daily health data has been saved successfully!\n\nGreat job tracking your health journey today!');
+            
+            // Redirect to dashboard after success
+            setTimeout(() => {
+                window.location.href = '/dashboard/';  // Use your actual dashboard URL
+            }, 2000);
+        } else {
+            throw new Error(result.error || 'Failed to save data');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('❌ Error saving data: ' + error.message);
+        
+        submitBtn.textContent = 'Save Today\'s Health Data';
+        submitBtn.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
+        submitBtn.disabled = false;
+    });
+});
+        // Enhanced interactions
+        document.querySelectorAll('.form-input, .form-select').forEach(input => {
+            input.addEventListener('focus', function() {
+                this.style.transform = 'translateY(-1px)';
+            });
+            
+            input.addEventListener('blur', function() {
+                this.style.transform = 'translateY(0)';
+            });
+        });
+
+        document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(input => {
+            input.addEventListener('change', function() {
+                const label = this.nextElementSibling;
+                if (label) {
+                    label.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        if (this.checked) {
+                            label.style.transform = 'translateY(-2px)';
+                        } else {
+                            label.style.transform = 'translateY(0)';
+                        }
+                    }, 100);
+                }
+                updateProgress();
+            });
+        });
+
+        // Prevent negative values
+        document.querySelectorAll('input[type="number"]').forEach(input => {
+            input.addEventListener('input', function() {
+                if (this.value < 0) {
+                    this.value = 0;
+                }
+            });
+        });
+
+        // Initial progress update
+        updateProgress();
+
+        // Animate sections on load
+        document.querySelectorAll('.section').forEach((section, index) => {
+            section.style.animationDelay = `${index * 0.1}s`;
+            section.style.animation = 'slideUp 0.6s ease-out forwards';
+        });
+
+        // Auto-hide messages after 5 seconds
+        setTimeout(() => {
+            const messages = document.querySelector('.messages');
+            if (messages) {
+                messages.style.opacity = '0';
+                setTimeout(() => messages.remove(), 300);
+            }
+        }, 5000);
+
+        // Keyboard shortcut for form submission
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                document.getElementById('submitBtn').click();
+            }
         });
     </script>
 </body>

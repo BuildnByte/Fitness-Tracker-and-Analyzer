@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Diet Plan | FitTrack Pro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: float 30s linear infinite;
+            z-index: 0;
+        }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(-30px, -30px) rotate(360deg); }
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .header h1 {
+            color: #1a1a1a;
+            font-size: 2rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .ai-badge {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .back-btn {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .plan-overview {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .plan-type {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 25px;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .plan-summary {
+            color: #374151;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .data-context {
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .data-context h4 {
+            color: #667eea;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .data-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+            color: #374151;
+            font-size: 0.85rem;
+        }
+
+        .targets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .target-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 15px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .target-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .target-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            margin: 0 auto 1rem;
+        }
+
+        .target-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .target-label {
+            color: #6b7280;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .recommendations {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .recommendations h2 {
+            color: #1a1a1a;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .recommendations-list {
+            list-style: none;
+        }
+
+        .recommendation-item {
+            background: rgba(102, 126, 234, 0.05);
+            border-left: 4px solid #667eea;
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .recommendation-icon {
+            width: 35px;
+            height: 35px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .recommendation-text {
+            color: #374151;
+            font-weight: 500;
+            line-height: 1.5;
+        }
+
+        .progress-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-top: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .progress-section h3 {
+            color: #1a1a1a;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .progress-tip {
+            background: linear-gradient(135deg, rgb(210, 218, 255), rgb(255, 255, 255));
+            border: 2px solid rgba(102, 126, 234, 0.2);
+            border-radius: 12px;
+            padding: 1rem;
+            color: #374151;
+            line-height: 1.6;
+        }
+
+        .no-plan-message {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 3rem;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .no-plan-message h2 {
+            color: #374151;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .no-plan-message p {
+            color: #6b7280;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .targets-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .header h1 {
+                font-size: 1.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .targets-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .data-summary {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>
+                    AI Diet Plan
+                    <span class="ai-badge">🤖 AI Powered</span>
+                </h1>
+            </div>
+            <a href="{% url 'dashboard' %}" class="back-btn">← Back to Dashboard</a>
+        </div>
+
+        {% if diet_plan %}
+            <div class="plan-overview">
+                <div class="plan-type">
+                    <span>📋</span>
+                    <span>{{ diet_plan.diet_plan.plan_style|title }} Plan</span>
+                </div>
+                
+                <div class="plan-summary">
+                    {{ diet_plan.diet_plan.summary }}
+                </div>
+
+                <div class="data-context">
+                    <h4>📊 Based on your {{ diet_plan.diet_plan.days_analyzed }}-day average:</h4>
+                    <div class="data-summary">
+                        <div><strong>Sleep:</strong> {{ diet_plan.diet_plan.weekly_data.week_avg_sleep }}h</div>
+                        <div><strong>Calories:</strong> {{ diet_plan.diet_plan.weekly_data.avg_calories }}</div>
+                        <div><strong>Protein:</strong> {{ diet_plan.diet_plan.weekly_data.protein }}g</div>
+                        <div><strong>Carbs:</strong> {{ diet_plan.diet_plan.weekly_data.carbs }}g</div>
+                        <div><strong>Water:</strong> {{ diet_plan.diet_plan.weekly_data.water_l }}L</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="targets-grid">
+                <div class="target-card">
+                    <div class="target-icon">🔥</div>
+                    <div class="target-value">{{ diet_plan.diet_plan.targets.calories_kcal }}</div>
+                    <div class="target-label">Daily Calories</div>
+                </div>
+
+                <div class="target-card">
+                    <div class="target-icon">🥩</div>
+                    <div class="target-value">{{ diet_plan.diet_plan.targets.protein_g }}g</div>
+                    <div class="target-label">Protein</div>
+                </div>
+
+                <div class="target-card">
+                    <div class="target-icon">🌾</div>
+                    <div class="target-value">{{ diet_plan.diet_plan.targets.carbs_g }}g</div>
+                    <div class="target-label">Carbohydrates</div>
+                </div>
+
+                <div class="target-card">
+                    <div class="target-icon">💧</div>
+                    <div class="target-value">{{ diet_plan.diet_plan.targets.water_l }}L</div>
+                    <div class="target-label">Water</div>
+                </div>
+
+                <div class="target-card">
+                    <div class="target-icon">😴</div>
+                    <div class="target-value">{{ diet_plan.diet_plan.targets.sleep_h }}h</div>
+                    <div class="target-label">Sleep</div>
+                </div>
+            </div>
+
+            <div class="recommendations">
+                <h2>📝 Personalized Recommendations</h2>
+                <ul class="recommendations-list">
+                    {% for bullet in diet_plan.diet_plan.bullets %}
+                        <li class="recommendation-item">
+                            <div class="recommendation-icon">✓</div>
+                            <div class="recommendation-text">{{ bullet }}</div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="progress-section">
+                <h3>📈 Track Your Progress</h3>
+                <div class="progress-tip">
+                    Keep logging your daily health data to get updated AI recommendations. 
+                    Your plan will automatically adjust based on your progress and changing patterns. 
+                    Check back weekly for refined suggestions!
+                </div>
+            </div>
+
+        {% else %}
+            <div class="no-plan-message">
+                <h2>🤖 AI Diet Plan Not Available</h2>
+                <p>
+                    We need at least 3 days of health data to generate your personalized AI diet plan. 
+                    Keep tracking your daily metrics and come back once you have enough data!
+                </p>
+                <a href="{% url 'dashboard' %}" class="refresh-btn">
+                    📝 Continue Tracking
+                </a>
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        // Add some interactive animations
+        document.querySelectorAll('.target-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-5px) scale(1.02)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+
+        document.querySelectorAll('.recommendation-item').forEach(item => {
+            item.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateX(5px)';
+            });
+            
+            item.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateX(0)';
+            });
+        });
+
+        // Auto-refresh suggestion
+        {% if diet_plan %}
+            console.log('Diet plan generated successfully:', {
+                plan_style: '{{ diet_plan.plan_style }}',
+                targets: {{ diet_plan.targets|safe }}
+            });
+        {% endif %}
+    </script>
+</body>
+</html>
