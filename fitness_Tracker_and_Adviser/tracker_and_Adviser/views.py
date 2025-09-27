@@ -15,11 +15,203 @@ import pyrebase
 from django.conf import settings
 import json
 from datetime import datetime, date, timedelta
+from django.core.management.base import BaseCommand
+from datetime import datetime, timedelta
+import pytz
+from celery import shared_task  # If using Celery for background tasks
+from django.utils.dateparse import parse_datetime
+from django.utils.timezone import localtime
 
+def get_week_start_end_dates(target_date=None):
+    """Get the start (Monday) and end (Sunday) dates for a given week"""
+    if target_date is None:
+        target_date = timezone.now().date()
+    
+    # Find the Monday of the current week
+    days_since_monday = target_date.weekday()
+    week_start = target_date - timedelta(days=days_since_monday)
+    week_end = week_start + timedelta(days=6)
+    
+    return week_start, week_end
 
+def get_next_week_dates():
+    """Get start and end dates for next week"""
+    today = timezone.now().date()
+    days_until_next_monday = 7 - today.weekday()
+    next_monday = today + timedelta(days=days_until_next_monday)
+    next_sunday = next_monday + timedelta(days=6)
+    
+    return next_monday, next_sunday
 
+def save_weekly_plan_to_firebase(uid, week_start_date, diet_plan, workout_plan):
+    """Save the generated weekly plan to Firebase"""
+    try:
+        week_key = week_start_date.strftime('%Y-%m-%d')  # Use Monday's date as key
+        
+        plan_data = {
+            'week_start_date': week_start_date.strftime('%Y-%m-%d'),
+            'week_end_date': (week_start_date + timedelta(days=6)).strftime('%Y-%m-%d'),
+            'generated_at': timezone.now().isoformat(),
+            'diet_plan': diet_plan,
+            'workout_plan': workout_plan,
+            'is_current': True  # Mark as current plan
+        }
+        
+        # Save the plan
+        db.child("weekly_plans").child(uid).child(week_key).set(plan_data)
+        
+        # Mark previous plans as not current
+        all_plans = db.child("weekly_plans").child(uid).get().val()
+        if all_plans:
+            for plan_key, plan in all_plans.items():
+                if plan_key != week_key:
+                    db.child("weekly_plans").child(uid).child(plan_key).update({'is_current': False})
+        
+        print(f"Successfully saved weekly plan for user {uid} starting {week_start_date}")
+        return True
+        
+    except Exception as e:
+        print(f"Error saving weekly plan for user {uid}: {str(e)}")
+        return False
 
+def get_weekly_plan_from_firebase(uid, week_start_date=None):
+    """Retrieve weekly plan from Firebase"""
+    try:
+        if week_start_date is None:
+            # Get current week's plan
+            current_monday, _ = get_week_start_end_dates()
+            week_key = current_monday.strftime('%Y-%m-%d')
+        else:
+            week_key = week_start_date.strftime('%Y-%m-%d')
+        
+        plan = db.child("weekly_plans").child(uid).child(week_key).get().val()
+        
+        if plan:
+            print(f"Retrieved weekly plan for user {uid} for week {week_key}")
+            return plan
+        else:
+            print(f"No weekly plan found for user {uid} for week {week_key}")
+            return None
+            
+    except Exception as e:
+        print(f"Error retrieving weekly plan for user {uid}: {str(e)}")
+        return None
 
+def get_current_weekly_plan(uid):
+    """Get the current active weekly plan for a user"""
+    try:
+        all_plans = db.child("weekly_plans").child(uid).get().val()
+        if not all_plans:
+            return None
+        
+        # Find the current plan
+        for plan_key, plan in all_plans.items():
+            if plan.get('is_current', False):
+                return plan
+        
+        # If no current plan found, try to get this week's plan
+        current_monday, _ = get_week_start_end_dates()
+        return get_weekly_plan_from_firebase(uid, current_monday)
+        
+    except Exception as e:
+        print(f"Error getting current weekly plan for user {uid}: {str(e)}")
+        return None
+
+def generate_weekly_plan_for_user(uid):
+    """Generate and save weekly plan for a specific user"""
+    try:
+        print(f"Generating weekly plan for user {uid}")
+        
+        # Get the data from the current week (Monday to Sunday)
+        current_monday, current_sunday = get_week_start_end_dates()
+        
+        # Get health records for the current week
+        records = get_health_records_from_firebase(uid, current_monday, current_sunday)
+        
+        if not records or len(records) < 3:
+            print(f"Insufficient data for user {uid}: {len(records) if records else 0} records")
+            return False
+        
+        # Generate the plan using existing function
+        combined_plan = predict_weekly_health_and_fitness(uid)
+        
+        if not combined_plan:
+            print(f"Failed to generate plan for user {uid}")
+            return False
+        
+        # Get next week's dates
+        next_monday, next_sunday = get_next_week_dates()
+        
+        # Save the plan for next week
+        success = save_weekly_plan_to_firebase(
+            uid, 
+            next_monday, 
+            combined_plan['diet_plan'], 
+            combined_plan['workout_plan']
+        )
+        
+        if success:
+            print(f"Successfully generated and saved weekly plan for user {uid}")
+        
+        return success
+        
+    except Exception as e:
+        print(f"Error generating weekly plan for user {uid}: {str(e)}")
+        return False
+
+def generate_all_weekly_plans():
+    """Generate weekly plans for all users - called on Sunday nights"""
+    try:
+        print("Starting weekly plan generation for all users...")
+        
+        # Get all users from Firebase
+        all_users = db.child("users").get().val()
+        
+        if not all_users:
+            print("No users found")
+            return
+        
+        success_count = 0
+        total_users = len(all_users)
+        
+        for uid in all_users.keys():
+            try:
+                if generate_weekly_plan_for_user(uid):
+                    success_count += 1
+                    print(f"✓ Generated plan for user {uid}")
+                else:
+                    print(f"✗ Failed to generate plan for user {uid}")
+            except Exception as e:
+                print(f"✗ Error processing user {uid}: {str(e)}")
+        
+        print(f"Weekly plan generation completed: {success_count}/{total_users} users")
+        
+        # Log the batch operation
+        batch_log = {
+            'timestamp': timezone.now().isoformat(),
+            'total_users': total_users,
+            'successful_plans': success_count,
+            'failed_plans': total_users - success_count
+        }
+        db.child("plan_generation_logs").push(batch_log)
+        
+    except Exception as e:
+        print(f"Error in batch weekly plan generation: {str(e)}")
+
+# Celery task for background processing (optional)
+@shared_task
+def weekly_plan_generation_task():
+    """Celery task to generate weekly plans"""
+    generate_all_weekly_plans()
+
+# Django management command
+class Command(BaseCommand):
+    help = 'Generate weekly plans for all users'
+    
+    def handle(self, *args, **options):
+        self.stdout.write('Starting weekly plan generation...')
+        generate_all_weekly_plans()
+        self.stdout.write(self.style.SUCCESS('Weekly plan generation completed'))
 
 firebase_config = {
     "apiKey": settings.FIREBASE_API_KEY,
@@ -653,8 +845,9 @@ def predict_weekly_health_and_fitness(uid):
 
 # Views for Diet Plan Feature
 
-def diet_plan_view(request):
-    """View to display AI-generated diet plan"""
+# Updated diet plan view
+def diet_plan_view_updated(request):
+    """View to display saved weekly diet plan"""
     user = request.session.get('user')
     if not user:
         messages.warning(request, "Please login to access diet plans.")
@@ -663,40 +856,86 @@ def diet_plan_view(request):
     uid = user['uid']
     
     try:
-        # Generate diet plan
-        diet_plan = predict_weekly_health_and_fitness(uid)
+        # Get saved weekly plan
+        weekly_plan = get_current_weekly_plan(uid)
+        weekly_stats = get_weekly_stats(uid)
         
-        if not diet_plan:
-            messages.warning(request, "Need at least 3 days of health data to generate a personalized diet plan.")
+        if not weekly_plan:
+            messages.warning(request, "No weekly plan available. Plans are generated every Sunday night.")
             return redirect('dashboard')
         
         context = {
             'user': user,
-            'diet_plan': diet_plan,
+            'diet_plan': weekly_plan.get('diet_plan'),
+            'weekly_stats' :weekly_stats,
+            'plan_info': {
+                'week_start': weekly_plan.get('week_start_date'),
+                'week_end': weekly_plan.get('week_end_date'),
+                'generated_at': weekly_plan.get('generated_at')
+            },
             'current_streak': get_current_streak(uid),
         }
+
+        
         
         return render(request, 'diet_plan.html', context)
         
     except Exception as e:
         print(f"Error in diet_plan_view: {str(e)}")
-        messages.error(request, "Error generating diet plan. Please try again.")
+        messages.error(request, "Error loading diet plan. Please try again.")
         return redirect('dashboard')
 
-def workout_plan_view(request):
-    # Example: fetch the latest workout plan
+
+# Updated workout plan view
+def workout_plan_view_updated(request):
+    """View to display saved weekly workout plan"""
     user = request.session.get('user')
     if not user:
         return redirect('login')
 
     uid = user['uid']
-    plan = predict_weekly_health_and_fitness(uid)
-    workout_plan = plan["workout_plan"] if plan else None
+    
+    try:
+        # Get saved weekly plan
+        weekly_plan = get_current_weekly_plan(uid)
+        
+        if not weekly_plan:
+            messages.warning(request, "No weekly plan available. Plans are generated every Sunday night.")
+            return redirect('dashboard')
+        
+        context = {
+            'user': user,
+            'workout_plan': weekly_plan.get('workout_plan'),
+            'plan_info': {
+                'week_start': weekly_plan.get('week_start_date'),
+                'week_end': weekly_plan.get('week_end_date'),
+                'generated_at': weekly_plan.get('generated_at')
+            }
+        }
+        
+        return render(request, "workout_plan.html", context)
+        
+    except Exception as e:
+        print(f"Error in workout_plan_view: {str(e)}")
+        messages.error(request, "Error loading workout plan. Please try again.")
+        return redirect('dashboard')
 
-    return render(request, "workout_plan.html", {"workout_plan": workout_plan})
 
+# API endpoint to manually trigger plan generation (admin use)
+@csrf_exempt
+def generate_plans_manually(request):
+    """Manual trigger for plan generation (for testing/admin)"""
+    if request.method == 'POST':
+        try:
+            generate_all_weekly_plans()
+            return JsonResponse({'success': True, 'message': 'Weekly plans generated successfully'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Method not allowed'})
 
-def dashboard_view(request):
+# Updated dashboard view to use saved plans
+def dashboard_view_updated(request):
     user = request.session.get('user')
     if not user:
         messages.warning(request, "Please login to access dashboard.")
@@ -719,41 +958,44 @@ def dashboard_view(request):
         end_date = timezone.now().date()
         start_date = end_date - timedelta(days=6)
         
-        print(f"Fetching records for user {uid} from {start_date} to {end_date}")
         recent_records = get_health_records_from_firebase(uid, start_date, end_date)
-        print(f"Found {len(recent_records) if recent_records else 0} records")
-        
-        # Prepare chart data
         chart_data = prepare_chart_data(recent_records, start_date, end_date)
 
-        # Get combined diet + workout plan (ML model prediction)
-        combined_plan = None
-        if weekly_stats:
-            try:
-                combined_plan = predict_weekly_health_and_fitness(uid)
-            except Exception as ml_error:
-                print(f"ML prediction failed: {ml_error}")
+        # Get SAVED weekly plan instead of generating it
+        combined_plan = get_current_weekly_plan(uid)
         
-        print(f"Combined plan: {combined_plan}")
+        # If no saved plan exists, generate one (fallback for new users)
+        if not combined_plan and weekly_stats:
+            print(f"No saved plan found for user {uid}, generating fallback plan")
+            try:
+                temp_plan = predict_weekly_health_and_fitness(uid)
+                if temp_plan:
+                    # Save this as current plan
+                    current_monday, _ = get_week_start_end_dates()
+                    save_weekly_plan_to_firebase(uid, current_monday, temp_plan['diet_plan'], temp_plan['workout_plan'])
+                    combined_plan = get_current_weekly_plan(uid)
+            except Exception as e:
+                print(f"Error generating fallback plan: {str(e)}")
 
         context = {
             'user': user,
             'user_profile': user_profile,
             'has_today_record': has_today_record,
             'weekly_stats': weekly_stats,
-            'chart_data': json.dumps(chart_data, default=str),  # Handle date serialization
+            'chart_data': json.dumps(chart_data, default=str),
             'current_streak': get_current_streak(uid),
             'total_records': get_total_records_count(uid),
-            'combined_plan': combined_plan,  # NEW
+            'combined_plan': combined_plan,
+            'plan_week_info': {
+                'start_date': combined_plan.get('week_start_date') if combined_plan else None,
+                'end_date': combined_plan.get('week_end_date') if combined_plan else None,
+                'generated_at': localtime(parse_datetime(combined_plan.get('generated_at'))).strftime("%Y-%m-%d %H:%M:%S") if combined_plan else None
+            }
         }
-        
-        print(f"Dashboard context prepared successfully for user {uid}")
+
         
     except Exception as e:
         print(f"Error in dashboard_view: {str(e)}")
-        import traceback
-        print(traceback.format_exc())
-        
         context = {
             'user': user,
             'user_profile': {},
@@ -762,7 +1004,8 @@ def dashboard_view(request):
             'chart_data': json.dumps({}),
             'current_streak': 0,
             'total_records': 0,
-            'combined_plan': None  # keep safe fallback
+            'combined_plan': None,
+            'plan_week_info': None
         }
         messages.error(request, "Error loading dashboard data. Please try again.")
     

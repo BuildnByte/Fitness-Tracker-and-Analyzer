@@ -815,6 +815,27 @@
                             </div>
                             <div class="ai-badge">AI Powered</div>
                         </div>
+
+                        <!-- Add this section to show which week the plan is for -->
+{% if combined_plan and plan_week_info %}
+<div class="plan-week-info mb-3">
+    <div class="alert alert-info">
+        <h6>Current Plan Week</h6>
+        <p class="mb-0">
+            <strong>Week:</strong> {{ plan_week_info.start_date }} to {{ plan_week_info.end_date }}
+            <br>
+            <small class="text-muted">Generated on: {{ plan_week_info.generated_at }}</small>
+        </p>
+    </div>
+</div>
+{% endif %}
+
+{% if not combined_plan %}
+<div class="alert alert-warning">
+    <h6>No Weekly Plan Available</h6>
+    <p class="mb-0">Weekly plans are generated every Sunday night. Please check back after Sunday 11:30 PM for your personalized plan.</p>
+</div>
+{% endif %}
                         
                         <div class="plan-type-badge">
                             📋 {{ combined_plan.diet_plan.plan_style|title }} Plan
@@ -883,6 +904,27 @@
                             </div>
                             <div class="ai-badge">AI Powered</div>
                         </div>
+
+                        <!-- Add this section to show which week the plan is for -->
+{% if combined_plan and plan_week_info %}
+<div class="plan-week-info mb-3">
+    <div class="alert alert-info">
+        <h6>Current Plan Week</h6>
+        <p class="mb-0">
+            <strong>Week:</strong> {{ plan_week_info.start_date }} to {{ plan_week_info.end_date }}
+            <br>
+            <small class="text-muted">Generated on: {{ plan_week_info.generated_at }}</small>
+        </p>
+    </div>
+</div>
+{% endif %}
+
+{% if not combined_plan %}
+<div class="alert alert-warning">
+    <h6>No Weekly Plan Available</h6>
+    <p class="mb-0">Weekly plans are generated every Sunday night. Please check back after Sunday 11:30 PM for your personalized plan.</p>
+</div>
+{% endif %}
                         
                         <div class="plan-type-badge">
                             🏋️ {{ combined_plan.workout_plan.predicted_label|title }} Program

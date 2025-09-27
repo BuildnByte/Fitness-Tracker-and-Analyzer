@@ -349,21 +349,21 @@
             <div class="plan-overview">
                 <div class="plan-type">
                     <span>📋</span>
-                    <span>{{ diet_plan.diet_plan.plan_style|title }} Plan</span>
+                    <span>{{ diet_plan.plan_style|title }} Plan</span>
                 </div>
                 
                 <div class="plan-summary">
-                    {{ diet_plan.diet_plan.summary }}
+                    {{ diet_plan.summary }}
                 </div>
 
                 <div class="data-context">
-                    <h4>📊 Based on your {{ diet_plan.diet_plan.days_analyzed }}-day average:</h4>
+                    <h4>📊 Based on your {{ weekly_stats.active_days }}-day average:</h4>
                     <div class="data-summary">
-                        <div><strong>Sleep:</strong> {{ diet_plan.diet_plan.weekly_data.week_avg_sleep }}h</div>
-                        <div><strong>Calories:</strong> {{ diet_plan.diet_plan.weekly_data.avg_calories }}</div>
-                        <div><strong>Protein:</strong> {{ diet_plan.diet_plan.weekly_data.protein }}g</div>
-                        <div><strong>Carbs:</strong> {{ diet_plan.diet_plan.weekly_data.carbs }}g</div>
-                        <div><strong>Water:</strong> {{ diet_plan.diet_plan.weekly_data.water_l }}L</div>
+                        <div><strong>Sleep:</strong> {{ weekly_stats.avg_sleep }}h</div>
+                        <div><strong>Calories:</strong> {{ weekly_stats.avg_calories|floatformat:0 }}</div>
+                        <div><strong>Protein:</strong> {{ diet_plan.weekly_data.protein }}g</div>
+                        <div><strong>Carbs:</strong> {{ diet_plan.weekly_data.carbs }}g</div>
+                        <div><strong>Water:</strong> {{ diet_plan.weekly_data.water_l }}L</div>
                     </div>
                 </div>
             </div>
@@ -371,31 +371,31 @@
             <div class="targets-grid">
                 <div class="target-card">
                     <div class="target-icon">🔥</div>
-                    <div class="target-value">{{ diet_plan.diet_plan.targets.calories_kcal }}</div>
+                    <div class="target-value">{{ diet_plan.targets.calories_kcal }}</div>
                     <div class="target-label">Daily Calories</div>
                 </div>
 
                 <div class="target-card">
                     <div class="target-icon">🥩</div>
-                    <div class="target-value">{{ diet_plan.diet_plan.targets.protein_g }}g</div>
+                    <div class="target-value">{{ diet_plan.targets.protein_g }}g</div>
                     <div class="target-label">Protein</div>
                 </div>
 
                 <div class="target-card">
                     <div class="target-icon">🌾</div>
-                    <div class="target-value">{{ diet_plan.diet_plan.targets.carbs_g }}g</div>
+                    <div class="target-value">{{ diet_plan.targets.carbs_g }}g</div>
                     <div class="target-label">Carbohydrates</div>
                 </div>
 
                 <div class="target-card">
                     <div class="target-icon">💧</div>
-                    <div class="target-value">{{ diet_plan.diet_plan.targets.water_l }}L</div>
+                    <div class="target-value">{{ diet_plan.targets.water_l }}L</div>
                     <div class="target-label">Water</div>
                 </div>
 
                 <div class="target-card">
                     <div class="target-icon">😴</div>
-                    <div class="target-value">{{ diet_plan.diet_plan.targets.sleep_h }}h</div>
+                    <div class="target-value">{{ diet_plan.targets.sleep_h }}h</div>
                     <div class="target-label">Sleep</div>
                 </div>
             </div>
@@ -403,7 +403,7 @@
             <div class="recommendations">
                 <h2>📝 Personalized Recommendations</h2>
                 <ul class="recommendations-list">
-                    {% for bullet in diet_plan.diet_plan.bullets %}
+                    {% for bullet in diet_plan.bullets %}
                         <li class="recommendation-item">
                             <div class="recommendation-icon">✓</div>
                             <div class="recommendation-text">{{ bullet }}</div>
