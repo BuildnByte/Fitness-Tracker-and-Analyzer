@@ -193,6 +193,183 @@
             margin-bottom: 2rem;
         }
 
+        /* Progress Section Styles */
+        .progress-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .progress-title {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .card-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .card-title {
+            color: #1a1a1a;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .progress-score {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .score-circle {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: conic-gradient(from 0deg, var(--progress-color) 0deg, var(--progress-color) var(--progress-angle, 0deg), #e5e7eb var(--progress-angle, 0deg), #e5e7eb 360deg);
+        }
+
+        .score-circle::before {
+            content: '';
+            position: absolute;
+            inset: 10px;
+            border-radius: 50%;
+            background: white;
+        }
+
+        .score-value {
+            position: relative;
+            z-index: 2;
+            font-size: 2rem;
+            font-weight: 800;
+            color: #1a1a1a;
+        }
+
+        .score-label {
+            position: relative;
+            z-index: 2;
+            font-size: 0.8rem;
+            color: #6b7280;
+            font-weight: 600;
+        }
+
+        .progress-level {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 15px;
+            padding: 1.5rem;
+            transition: transform 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .metric-name {
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.9rem;
+        }
+
+        .metric-score {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .metric-progress {
+            background: #e5e7eb;
+            border-radius: 10px;
+            height: 8px;
+            margin-bottom: 0.5rem;
+            overflow: hidden;
+        }
+
+        .metric-progress-bar {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.8s ease;
+        }
+
+        .metric-comparison {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+        }
+
+        .current-value {
+            color: #374151;
+            font-weight: 600;
+        }
+
+        .target-value {
+            color: #6b7280;
+        }
+
+        .trend-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 10px;
+        }
+
+        .trend-text {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #374151;
+        }
+
         .card {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(20px);
@@ -592,7 +769,7 @@
         <!-- Header -->
         <div class="header">
             <div class="user-info">
-                <h1>Welcome back, {{ user.name }}! 📊</h1>
+                <h1>Welcome back, {{ user.name }}!</h1>
                 <p>Track your daily metrics and see your progress over time</p>
             </div>
             <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
@@ -628,6 +805,174 @@
                 </a>
             </div>
         {% else %}
+            <!-- Progress Tracking Section -->
+            {% if progress_data and baseline %}
+                <div class="progress-section">
+                    <div class="progress-header">
+                        <div class="progress-title">
+                            <div class="card-icon">🎯</div>
+                            <div>
+                                <h2 class="card-title">Your Progress</h2>
+                                <p style="color: #6b7280; margin: 0;">Compared to your {{ baseline.goal|title }} goal baseline</p>
+                            </div>
+                        </div>
+                        
+                        <div class="progress-score">
+                            <div class="score-circle" style="--progress-color: {{ progress_data.progress_level.color }}; --progress-angle: {{ progress_data.overall_score|floatformat:0 }}deg;">
+                                <div class="score-value">{{ progress_data.overall_score }}%</div>
+                                <div class="score-label">Overall</div>
+                            </div>
+                            <div class="progress-level" style="background-color: {{ progress_data.progress_level.color }}20; color: {{ progress_data.progress_level.color }};">
+                                <span>{{ progress_data.progress_level.icon }}</span>
+                                <span>{{ progress_data.progress_level.level }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Individual Metrics Progress -->
+                    <div class="metrics-grid">
+                        {% for metric_name, score in progress_data.individual_scores.items %}
+                            {% if metric_name == 'sleep' %}
+                                <div class="metric-card">
+                                    <div class="metric-header">
+                                        <span class="metric-name">😴 Sleep Hours</span>
+                                        <span class="metric-score" style="color: {% if score >= 80 %}#10b981{% elif score >= 60 %}#3b82f6{% elif score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};">{{ score|floatformat:0 }}%</span>
+                                    </div>
+                                    <div class="metric-progress">
+                                        <div class="metric-progress-bar" style="width: {{ score }}%; background-color: {% if score >= 80 %}#10b981{% elif score >= 60 %}#3b82f6{% elif score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};"></div>
+                                    </div>
+                                    <div class="metric-comparison">
+                                        <span class="current-value">Current: {{ progress_data.current_values.sleep_hours }}h</span>
+                                        <span class="target-value">Target: {{ progress_data.targets.sleep_hours }}h</span>
+                                    </div>
+                                </div>
+                            {% elif metric_name == 'sleep_quality' %}
+                                <div class="metric-card">
+                                    <div class="metric-header">
+                                        <span class="metric-name">🌟 Sleep Quality</span>
+                                        <span class="metric-score" style="color: {% if score >= 80 %}#10b981{% elif score >= 60 %}#3b82f6{% elif score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};">{{ score|floatformat:0 }}%</span>
+                                    </div>
+                                    <div class="metric-progress">
+                                        <div class="metric-progress-bar" style="width: {{ score }}%; background-color: {% if score >= 80 %}#10b981{% elif score >= 60 %}#3b82f6{% elif score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};"></div>
+                                    </div>
+                                    <div class="metric-comparison">
+                                        <span class="current-value">Current: {{ progress_data.current_values.sleep_quality }}/5</span>
+                                        <span class="target-value">Target: {{ progress_data.targets.sleep_quality }}/5</span>
+                                    </div>
+                                </div>
+                            {% elif metric_name == 'workout_consistency' %}
+                                <div class="metric-card">
+                                    <div class="metric-header">
+                                        <span class="metric-name">💪 Workout Days</span>
+                                        <span class="metric-score" style="color: {% if score >= 80 %}#10b981{% elif score >= 60 %}#3b82f6{% elif score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};">{{ score|floatformat:0 }}%</span>
+                                    </div>
+                                    <div class="metric-progress">
+                                        <div class="metric-progress-bar" style="width: {{ score }}%; background-color: {% if score >= 80 %}#10b981{% elif score >= 60 %}#3b82f6{% elif score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};"></div>
+                                    </div>
+                                    <div class="metric-comparison">
+                                        <span class="current-value">Current: {{ progress_data.current_values.active_days }}/7</span>
+                                        <span class="target-value">Target: {{ progress_data.targets.active_days }}/7</span>
+                                    </div>
+                                </div>
+                            {% elif metric_name == 'workout_duration' %}
+                                <div class="metric-card">
+                                    <div class="metric-header">
+                                        <span class="metric-name">⏱️ Workout Duration</span>
+                                        <span class="metric-score" style="color: {% if score >= 80 %}#10b981{% elif score >= 60 %}#3b82f6{% elif score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};">{{ score|floatformat:0 }}%</span>
+                                    </div>
+                                    <div class="metric-progress">
+                                        <div class="metric-progress-bar" style="width: {{ score }}%; background-color: {% if score >= 80 %}#10b981{% elif score >= 60 %}#3b82f6{% elif score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};"></div>
+                                    </div>
+                                    <div class="metric-comparison">
+                                        <span class="current-value">Current: {{ progress_data.current_values.workout_duration }}min</span>
+                                        <span class="target-value">Target: {{ progress_data.targets.workout_duration }}min</span>
+                                    </div>
+                                </div>
+                            {% elif metric_name == 'hydration' %}
+                                <div class="metric-card">
+                                    <div class="metric-header">
+                                        <span class="metric-name">💧 Hydration</span>
+                                        <span class="metric-score" style="color: {% if score >= 80 %}#10b981{% elif score >= 60 %}#3b82f6{% elif score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};">{{ score|floatformat:0 }}%</span>
+                                    </div>
+                                    <div class="metric-progress">
+                                        <div class="metric-progress-bar" style="width: {{ score }}%; background-color: {% if score >= 80 %}#10b981{% elif score >= 60 %}#3b82f6{% elif score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};"></div>
+                                    </div>
+                                    <div class="metric-comparison">
+                                        <span class="current-value">Current: {{ progress_data.current_values.water_intake }}L</span>
+                                        <span class="target-value">Target: {{ progress_data.targets.water_intake }}L</span>
+                                    </div>
+                                </div>
+                            {% elif metric_name == 'diet_quality' %}
+                                <div class="metric-card">
+                                    <div class="metric-header">
+                                        <span class="metric-name">🥗 Diet Quality</span>
+                                        <span class="metric-score" style="color: {% if score >= 80 %}#10b981{% elif score >= 60 %}#3b82f6{% elif score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};">{{ score|floatformat:0 }}%</span>
+                                    </div>
+                                    <div class="metric-progress">
+                                        <div class="metric-progress-bar" style="width: {{ score }}%; background-color: {% if score >= 80 %}#10b981{% elif score >= 60 %}#3b82f6{% elif score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};"></div>
+                                    </div>
+                                    <div class="metric-comparison">
+                                        <span class="current-value">Junk Food: {{ progress_data.current_values.junk_food_level }}/4</span>
+                                        <span class="target-value">Target: ≤{{ progress_data.targets.junk_food_level }}/4</span>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <!-- Progress Trend -->
+                    {% if progress_trend %}
+                        <div class="trend-indicator">
+                            <div class="trend-arrow">
+                                {% if progress_trend.trend_direction == 'improving' %}
+                                    📈
+                                {% elif progress_trend.trend_direction == 'declining' %}
+                                    📉
+                                {% else %}
+                                    📊
+                                {% endif %}
+                            </div>
+                            <div class="trend-text">
+                                {% if progress_trend.trend_direction == 'improving' %}
+                                    Your progress is improving! Keep up the great work.
+                                {% elif progress_trend.trend_direction == 'declining' %}
+                                    Your progress needs attention. Consider adjusting your routine.
+                                {% elif progress_trend.trend_direction == 'stable' %}
+                                    Your progress is stable. Maintain your current habits.
+                                {% else %}
+                                    Start of your progress journey! Keep tracking for trends.
+                                {% endif %}
+                                ({{ progress_trend.weeks_tracked }} weeks tracked)
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            {% elif baseline %}
+                <!-- User has baseline but no progress yet -->
+                <div class="progress-section">
+                    <div class="progress-header">
+                        <div class="progress-title">
+                            <div class="card-icon">🎯</div>
+                            <div>
+                                <h2 class="card-title">Your {{ baseline.goal|title }} Goals</h2>
+                                <p style="color: #6b7280; margin: 0;">{{ baseline.targets.target_description }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center; padding: 2rem;">
+                        <div style="background: rgba(102, 126, 234, 0.1); border-radius: 50%; width: 100px; height: 100px; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; font-size: 3rem;">
+                            📊
+                        </div>
+                        <h3 style="color: #374151; margin-bottom: 1rem;">Progress Tracking Available Soon!</h3>
+                        <p style="color: #6b7280; line-height: 1.6;">
+                            Keep logging your daily health data to see your progress compared to your baseline goals. 
+                            Progress tracking will be available once you have sufficient data.
+                        </p>
+                    </div>
+                </div>
+            {% endif %}
+
             <!-- Quick Stats -->
             <div class="stats-grid">
                 <div class="stat-card">
@@ -1288,6 +1633,36 @@ new Chart(workoutCtx, {
         }
     }
 });
+
+document.addEventListener('DOMContentLoaded', function() {
+            const progressCircle = document.querySelector('.score-circle');
+            if (progressCircle) {
+                const finalScore = {{ progress_data.overall_score|default:0 }};
+                let currentScore = 0;
+                const increment = finalScore / 50;
+                
+                function animateProgress() {
+                    if (currentScore < finalScore) {
+                        currentScore += increment;
+                        const angle = (currentScore / 100) * 360;
+                        progressCircle.style.setProperty('--progress-angle', `${angle}deg`);
+                        requestAnimationFrame(animateProgress);
+                    }
+                }
+                
+                setTimeout(animateProgress, 500);
+            }
+
+            // Animate metric progress bars
+            const metricBars = document.querySelectorAll('.metric-progress-bar');
+            metricBars.forEach((bar, index) => {
+                const width = bar.style.width;
+                bar.style.width = '0%';
+                setTimeout(() => {
+                    bar.style.width = width;
+                }, 800 + (index * 100));
+            });
+        });
 
 // Add interactive animations
 document.querySelectorAll('.card').forEach(card => {

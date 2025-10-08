@@ -3,8 +3,8 @@ from . import views
 
 urlpatterns = [
     path('', views.login_view, name='login'),
-    path('signup/', views.signup_view, name='signup'),
-    path('dashboard/', views.dashboard_view_updated, name='dashboard'),
+    path('signup/', views.signup_view_with_baseline, name='signup'),
+    path('dashboard/', views.dashboard_view_with_progress, name='dashboard'),
     path('form/', views.form_view, name='form'),  # Changed from 'formview' to 'form'
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),

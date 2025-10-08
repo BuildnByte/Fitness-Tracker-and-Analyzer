@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign Up | FitTrack Pro</title>
+    <title>Sign Up - Set Your Health Goals | FitTrack Pro</title>
     <style>
         * {
             margin: 0;
@@ -14,560 +14,466 @@
         body {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
             min-height: 100vh;
-            position: relative;
-            overflow-x: hidden;
-            overflow-y: auto;
-            padding: 2rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
         }
 
-        /* Animated background elements */
-        body::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 100%;
-            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
-            background-size: 50px 50px;
-            z-index: 1;
-        }
-
-        .container {
+        .signup-container {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(20px);
-            padding: 3rem 2.5rem;
-            border-radius: 24px;
-            box-shadow: 
-                0 25px 50px rgba(0, 0, 0, 0.15),
-                0 0 0 1px rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
             width: 100%;
-            max-width: 480px;
-            position: relative;
-            z-index: 2;
-            transform: translateY(0);
         }
 
-        .logo {
+        .form-header {
             text-align: center;
             margin-bottom: 2rem;
         }
 
-        .logo-icon {
-            width: 64px;
-            height: 64px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 16px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 1rem;
-            color: white;
-            font-size: 24px;
-            font-weight: bold;
-            animation: pulse 2s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-
-        h1 {
+        .form-header h1 {
             color: #1a1a1a;
             font-size: 2rem;
             font-weight: 700;
-            text-align: center;
             margin-bottom: 0.5rem;
         }
 
-        .subtitle {
+        .form-header p {
             color: #6b7280;
-            text-align: center;
-            margin-bottom: 2.5rem;
-            font-size: 0.95rem;
+            font-size: 1rem;
         }
 
-        .messages {
-            margin-bottom: 1.5rem;
+        .form-section {
+            margin-bottom: 2rem;
         }
 
-        .messages .error {
-            background: #fee2e2;
-            color: #dc2626;
-            padding: 0.75rem 1rem;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            border: 1px solid #fecaca;
-        }
-
-        .messages .success {
-            background: #dcfce7;
-            color: #16a34a;
-            padding: 0.75rem 1rem;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            border: 1px solid #bbf7d0;
+        .section-title {
+            color: #374151;
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .form-group {
-            position: relative;
             margin-bottom: 1.5rem;
         }
 
         .form-label {
             display: block;
             color: #374151;
-            font-size: 0.875rem;
             font-weight: 500;
             margin-bottom: 0.5rem;
+            font-size: 0.9rem;
         }
 
         .form-input, .form-select {
             width: 100%;
-            padding: 1rem 1.25rem;
-            background: #f9fafb;
+            padding: 0.875rem 1rem;
             border: 2px solid #e5e7eb;
             border-radius: 12px;
             font-size: 1rem;
             transition: all 0.3s ease;
-            outline: none;
-            font-family: inherit;
+            background: white;
         }
 
         .form-input:focus, .form-select:focus {
-            background: white;
+            outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-            transform: translateY(-1px);
         }
 
-        .form-input::placeholder {
-            color: #9ca3af;
+        .baseline-section {
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-top: 1rem;
         }
 
-        .form-select {
-            cursor: pointer;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
-            background-position: right 0.75rem center;
-            background-repeat: no-repeat;
-            background-size: 1.5em 1.5em;
-            padding-right: 3rem;
-        }
-
-        .password-toggle {
-            position: absolute;
-            right: 1rem;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            color: #6b7280;
-            cursor: pointer;
-            padding: 0.5rem;
-            border-radius: 6px;
-            transition: color 0.2s ease;
-        }
-
-        .password-toggle:hover {
-            color: #374151;
-        }
-
-        .password-strength {
-            margin-top: 0.5rem;
-            height: 4px;
-            background: #e5e7eb;
-            border-radius: 2px;
-            overflow: hidden;
-        }
-
-        .password-strength-bar {
-            height: 100%;
-            width: 0%;
-            transition: all 0.3s ease;
-            border-radius: 2px;
-        }
-
-        .strength-weak { background: #ef4444; width: 25%; }
-        .strength-fair { background: #f59e0b; width: 50%; }
-        .strength-good { background: #10b981; width: 75%; }
-        .strength-strong { background: #059669; width: 100%; }
-
-        .password-requirements {
-            margin-top: 0.5rem;
-            font-size: 0.8rem;
-            color: #6b7280;
-        }
-
-        .requirement {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin: 0.25rem 0;
-        }
-
-        .requirement.met {
-            color: #10b981;
-        }
-
-        .signup-btn {
-            width: 100%;
-            padding: 1rem;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            font-size: 1rem;
-            font-weight: 600;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 1.5rem;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .signup-btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            transition: left 0.5s ease;
-        }
-
-        .signup-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-        }
-
-        .signup-btn:hover::before {
-            left: 100%;
-        }
-
-        .signup-btn:active {
-            transform: translateY(0);
-        }
-
-        .signup-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .goal-icons {
+        .baseline-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 1rem;
             margin-top: 1rem;
         }
 
-        .goal-option {
-            padding: 1rem;
-            border: 2px solid #e5e7eb;
+        .baseline-card {
+            background: white;
             border-radius: 12px;
+            padding: 1.5rem;
+            border: 2px solid transparent;
             cursor: pointer;
             transition: all 0.3s ease;
-            text-align: center;
-            background: white;
         }
 
-        .goal-option:hover {
+        .baseline-card.selected {
             border-color: #667eea;
-            background: #f8faff;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
-        .goal-option.selected {
-            border-color: #667eea;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
+        .baseline-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
-        .goal-option .icon {
-            font-size: 2rem;
+        .goal-title {
+            font-weight: 600;
+            color: #374151;
             margin-bottom: 0.5rem;
         }
 
-        .goal-option .title {
-            font-weight: 600;
+        .goal-description {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin-bottom: 1rem;
+        }
+
+        .goal-targets {
+            font-size: 0.8rem;
+            color: #374151;
+        }
+
+        .goal-targets div {
             margin-bottom: 0.25rem;
         }
 
-        .goal-option .description {
-            font-size: 0.8rem;
-            opacity: 0.8;
+        .custom-targets {
+            display: none;
+            margin-top: 1rem;
+            padding: 1.5rem;
+            background: white;
+            border-radius: 12px;
+            border: 2px solid #e5e7eb;
+        }
+
+        .custom-targets.show {
+            display: block;
+        }
+
+        .targets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .submit-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
         }
 
         .login-link {
             text-align: center;
-            color: #6b7280;
-            font-size: 0.95rem;
+            margin-top: 1.5rem;
         }
 
         .login-link a {
             color: #667eea;
             text-decoration: none;
-            font-weight: 600;
-            transition: color 0.2s ease;
+            font-weight: 500;
         }
 
         .login-link a:hover {
-            color: #5a67d8;
+            text-decoration: underline;
         }
 
-        /* Loading state */
-        .signup-btn.loading {
-            pointer-events: none;
-            opacity: 0.8;
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-weight: 500;
         }
 
-        .signup-btn.loading::after {
-            content: '';
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            border: 2px solid transparent;
-            border-top: 2px solid white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border-left: 4px solid #ef4444;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .info-box {
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
         }
 
-        /* Responsive design */
-        @media (max-width: 480px) {
-            body {
-                padding: 1rem 0.5rem;
+        .info-box-title {
+            font-weight: 600;
+            color: #1e40af;
+            margin-bottom: 0.5rem;
+        }
+
+        .info-box-text {
+            font-size: 0.9rem;
+            color: #1e40af;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 768px) {
+            .signup-container {
+                padding: 2rem;
+                margin: 1rem;
             }
-            
-            .container {
-                margin: 0;
-                padding: 2rem 1.5rem;
-            }
-            
-            h1 {
-                font-size: 1.75rem;
+
+            .baseline-grid {
+                grid-template-columns: 1fr;
             }
 
-            .goal-icons {
+            .targets-grid {
                 grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="logo">
-            <div class="logo-icon">💪</div>
+    <div class="signup-container">
+        <div class="form-header">
             <h1>Join FitTrack Pro</h1>
-            <p class="subtitle">Start your fitness transformation today</p>
+            <p>Set your health goals and start your journey to better wellness</p>
         </div>
 
-        <!-- Django Messages -->
         {% if messages %}
-        <div class="messages">
             {% for message in messages %}
-                <div class="{% if message.tags %}{{ message.tags }}{% endif %}">
-                    {{ message }}
-                </div>
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
             {% endfor %}
-        </div>
         {% endif %}
 
-        <form method="POST" id="signupForm">
+        <form method="post" id="signupForm">
             {% csrf_token %}
-            <div class="form-group">
-                <label class="form-label" for="name">Full Name</label>
-                <input 
-                    type="text" 
-                    id="name" 
-                    name="name"
-                    class="form-input" 
-                    placeholder="John Doe"
-                    required 
-                />
+            
+            <!-- Basic Information -->
+            <div class="form-section">
+                <h2 class="section-title">
+                    <span>👤</span>
+                    Basic Information
+                </h2>
+                
+                <div class="form-group">
+                    <label class="form-label" for="name">Full Name</label>
+                    <input type="text" id="name" name="name" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="email">Email Address</label>
+                    <input type="email" id="email" name="email" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="password">Password</label>
+                    <input type="password" id="password" name="password" class="form-input" required>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label class="form-label" for="email">Email Address</label>
-                <input 
-                    type="email" 
-                    id="email" 
-                    name="email"
-                    class="form-input" 
-                    placeholder="john.doe@example.com"
-                    required 
-                />
-            </div>
+            <!-- Goal Selection -->
+            <div class="form-section">
+                <h2 class="section-title">
+                    <span>🎯</span>
+                    Select Your Primary Goal
+                </h2>
 
-            <div class="form-group">
-                <label class="form-label" for="password">Password</label>
-                <div style="position: relative;">
-                    <input 
-                        type="password" 
-                        id="password" 
-                        name="password"
-                        class="form-input" 
-                        placeholder="Create a strong password"
-                        required 
-                        oninput="checkPasswordStrength()"
-                    />
-                    <button type="button" class="password-toggle" onclick="togglePassword('password')">
-                        👁️
+                <div class="info-box">
+                    <div class="info-box-title">Why set baseline targets?</div>
+                    <div class="info-box-text">
+                        Your baseline targets help us track your progress and generate personalized AI recommendations. 
+                        You can use our recommended targets or customize them based on your current fitness level.
+                    </div>
+                </div>
+
+                <input type="hidden" id="goal" name="goal" required>
+                
+                <div class="baseline-grid">
+                    <div class="baseline-card" data-goal="weight_loss">
+                        <div class="goal-title">Weight Loss</div>
+                        <div class="goal-description">Healthy weight loss with sustainable habits</div>
+                        <div class="goal-targets">
+                            <div><strong>Sleep:</strong> 7.5 hours</div>
+                            <div><strong>Calories:</strong> 1800/day</div>
+                            <div><strong>Water:</strong> 2.5L/day</div>
+                            <div><strong>Workouts:</strong> 5 days/week, 45 min</div>
+                            <div><strong>Junk Food:</strong> ≤1/4 level</div>
+                        </div>
+                    </div>
+
+                    <div class="baseline-card" data-goal="muscle_gain">
+                        <div class="goal-title">Muscle Gain</div>
+                        <div class="goal-description">Muscle building with adequate recovery</div>
+                        <div class="goal-targets">
+                            <div><strong>Sleep:</strong> 8.0 hours</div>
+                            <div><strong>Calories:</strong> 2400/day</div>
+                            <div><strong>Water:</strong> 3.0L/day</div>
+                            <div><strong>Workouts:</strong> 5 days/week, 60 min</div>
+                            <div><strong>Junk Food:</strong> ≤1.5/4 level</div>
+                        </div>
+                    </div>
+
+                    <div class="baseline-card" data-goal="endurance">
+                        <div class="goal-title">Endurance Training</div>
+                        <div class="goal-description">Endurance training with optimal fueling</div>
+                        <div class="goal-targets">
+                            <div><strong>Sleep:</strong> 7.5 hours</div>
+                            <div><strong>Calories:</strong> 2200/day</div>
+                            <div><strong>Water:</strong> 3.5L/day</div>
+                            <div><strong>Workouts:</strong> 6 days/week, 75 min</div>
+                            <div><strong>Junk Food:</strong> ≤1/4 level</div>
+                        </div>
+                    </div>
+
+                    <div class="baseline-card" data-goal="general">
+                        <div class="goal-title">General Fitness</div>
+                        <div class="goal-description">General health and wellness maintenance</div>
+                        <div class="goal-targets">
+                            <div><strong>Sleep:</strong> 7.5 hours</div>
+                            <div><strong>Calories:</strong> 2000/day</div>
+                            <div><strong>Water:</strong> 2.5L/day</div>
+                            <div><strong>Workouts:</strong> 4 days/week, 30 min</div>
+                            <div><strong>Junk Food:</strong> ≤2/4 level</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Custom Targets Section -->
+                <div class="custom-targets" id="customTargets">
+                    <h3 class="section-title">
+                        <span>⚙️</span>
+                        Customize Your Targets (Optional)
+                    </h3>
+                    
+                    <div class="targets-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="target_sleep_hours">Sleep Hours Target</label>
+                            <input type="number" id="target_sleep_hours" name="target_sleep_hours" 
+                                   class="form-input" step="0.5" min="6" max="10" placeholder="7.5">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="target_calories">Daily Calories Target</label>
+                            <input type="number" id="target_calories" name="target_calories" 
+                                   class="form-input" min="1200" max="4000" placeholder="2000">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="target_weekly_workouts">Weekly Workouts Target</label>
+                            <input type="number" id="target_weekly_workouts" name="target_weekly_workouts" 
+                                   class="form-input" min="1" max="7" placeholder="4">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="target_water">Daily Water Target (L)</label>
+                            <input type="number" id="target_water" name="target_water" 
+                                   class="form-input" step="0.1" min="1" max="5" placeholder="2.5">
+                        </div>
+                    </div>
+
+                    <div class="info-box">
+                        <div class="info-box-text">
+                            <strong>Note:</strong> These targets will be used to calculate your progress score. 
+                            You can always adjust them later in your profile settings.
+                        </div>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 1rem;">
+                    <button type="button" id="customizeBtn" style="background: none; border: 1px solid #667eea; color: #667eea; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-size: 0.9rem;">
+                        Customize Targets
                     </button>
                 </div>
-                <div class="password-strength">
-                    <div class="password-strength-bar" id="strengthBar"></div>
-                </div>
-                <div class="password-requirements" id="requirements">
-                    <div class="requirement" id="req-length">
-                        <span>•</span> At least 8 characters
-                    </div>
-                    <div class="requirement" id="req-uppercase">
-                        <span>•</span> One uppercase letter
-                    </div>
-                    <div class="requirement" id="req-number">
-                        <span>•</span> One number
-                    </div>
-                </div>
             </div>
 
-            <div class="form-group">
-                <label class="form-label">Primary Fitness Goal</label>
-                <div class="goal-icons">
-                    <div class="goal-option" onclick="selectGoal('weight_loss', this)">
-                        <div class="icon">🔥</div>
-                        <div class="title">Lose Weight</div>
-                        <div class="description">Burn fat & get lean</div>
-                    </div>
-                    <div class="goal-option" onclick="selectGoal('muscle_gain', this)">
-                        <div class="icon">💪</div>
-                        <div class="title">Build Muscle</div>
-                        <div class="description">Gain strength & size</div>
-                    </div>
-                    <div class="goal-option" onclick="selectGoal('endurance', this)">
-                        <div class="icon">🏃</div>
-                        <div class="title">Improve Endurance</div>
-                        <div class="description">Boost cardio fitness</div>
-                    </div>
-                    <div class="goal-option" onclick="selectGoal('general', this)">
-                        <div class="icon">⚡</div>
-                        <div class="title">General Fitness</div>
-                        <div class="description">Stay healthy & active</div>
-                    </div>
-                </div>
-                <input type="hidden" id="goal" name="goal" required />
-            </div>
-
-            <button type="submit" class="signup-btn" id="signupBtn">
-                Create Your Account
+            <button type="submit" class="submit-btn">
+                Create Account & Set Goals
             </button>
         </form>
 
         <div class="login-link">
-            Already have an account? <a href="{% url 'login' %}">Sign In</a>
+            Already have an account? <a href="{% url 'login' %}">Sign in here</a>
         </div>
     </div>
 
     <script>
-        let selectedGoal = '';
-
-        document.getElementById('signupForm').addEventListener('submit', function(e) {
-            // Basic client-side validation
-            const name = document.getElementById('name').value.trim();
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-            const goal = document.getElementById('goal').value;
-
-            if (!name || !email || !password || !goal) {
-                e.preventDefault();
-                alert('Please fill in all fields and select a fitness goal.');
-                return;
-            }
-
-            // Check password requirements
-            const passwordValid = password.length >= 8 &&
-                                  /[A-Z]/.test(password) &&
-                                  /\d/.test(password);
-            if (!passwordValid) {
-                e.preventDefault();
-                alert('Password must be at least 8 characters long and contain one uppercase letter and one number.');
-                return;
-            }
-
-            // Show loading state
-            const signupBtn = document.getElementById('signupBtn');
-            signupBtn.classList.add('loading');
-            signupBtn.textContent = '';
+        // Goal selection functionality
+        document.querySelectorAll('.baseline-card').forEach(card => {
+            card.addEventListener('click', function() {
+                // Remove selected class from all cards
+                document.querySelectorAll('.baseline-card').forEach(c => c.classList.remove('selected'));
+                
+                // Add selected class to clicked card
+                this.classList.add('selected');
+                
+                // Set hidden input value
+                const goal = this.dataset.goal;
+                document.getElementById('goal').value = goal;
+                
+                // Update custom targets placeholders based on selected goal
+                updatePlaceholders(goal);
+            });
         });
 
-        function togglePassword(inputId) {
-            const passwordInput = document.getElementById(inputId);
-            const toggleBtn = passwordInput.nextElementSibling;
+        // Custom targets toggle
+        document.getElementById('customizeBtn').addEventListener('click', function() {
+            const customTargets = document.getElementById('customTargets');
+            const isVisible = customTargets.classList.contains('show');
             
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                toggleBtn.textContent = '🙈';
+            if (isVisible) {
+                customTargets.classList.remove('show');
+                this.textContent = 'Customize Targets';
             } else {
-                passwordInput.type = 'password';
-                toggleBtn.textContent = '👁️';
+                customTargets.classList.add('show');
+                this.textContent = 'Hide Custom Targets';
             }
-        }
+        });
 
-        function checkPasswordStrength() {
-            const password = document.getElementById('password').value;
-            const strengthBar = document.getElementById('strengthBar');
-            const requirements = {
-                length: password.length >= 8,
-                uppercase: /[A-Z]/.test(password),
-                number: /\d/.test(password)
+        // Update placeholders based on goal selection
+        function updatePlaceholders(goal) {
+            const baselines = {
+                weight_loss: { sleep: '7.5', calories: '1800', workouts: '5', water: '2.5' },
+                muscle_gain: { sleep: '8.0', calories: '2400', workouts: '5', water: '3.0' },
+                endurance: { sleep: '7.5', calories: '2200', workouts: '6', water: '3.5' },
+                general: { sleep: '7.5', calories: '2000', workouts: '4', water: '2.5' }
             };
-
-            // Update requirement indicators
-            document.getElementById('req-length').classList.toggle('met', requirements.length);
-            document.getElementById('req-uppercase').classList.toggle('met', requirements.uppercase);
-            document.getElementById('req-number').classList.toggle('met', requirements.number);
-
-            // Update strength bar
-            const metCount = Object.values(requirements).filter(Boolean).length;
-            strengthBar.className = 'password-strength-bar';
             
-            if (metCount === 0) {
-                strengthBar.classList.add('strength-weak');
-            } else if (metCount === 1) {
-                strengthBar.classList.add('strength-fair');
-            } else if (metCount === 2) {
-                strengthBar.classList.add('strength-good');
-            } else {
-                strengthBar.classList.add('strength-strong');
+            const targets = baselines[goal] || baselines.general;
+            
+            document.getElementById('target_sleep_hours').placeholder = targets.sleep;
+            document.getElementById('target_calories').placeholder = targets.calories;
+            document.getElementById('target_weekly_workouts').placeholder = targets.workouts;
+            document.getElementById('target_water').placeholder = targets.water;
+        }
+
+        // Form validation
+        document.getElementById('signupForm').addEventListener('submit', function(e) {
+            const goal = document.getElementById('goal').value;
+            if (!goal) {
+                e.preventDefault();
+                alert('Please select a fitness goal before creating your account.');
+                return;
             }
-        }
+        });
 
-        function selectGoal(goal, element) {
-            // Remove selection from all options
-            document.querySelectorAll('.goal-option').forEach(option => {
-                option.classList.remove('selected');
-            });
-            
-            // Add selection to clicked option
-            element.classList.add('selected');
-            selectedGoal = goal;
-            document.getElementById('goal').value = goal;
-        }
-
-        // Enhanced input animations
+        // Add some visual feedback for form interactions
         document.querySelectorAll('.form-input').forEach(input => {
             input.addEventListener('focus', function() {
-                this.parentElement.style.transform = 'translateY(-2px)';
+                this.parentElement.style.transform = 'translateY(-1px)';
             });
             
             input.addEventListener('blur', function() {

@@ -276,6 +276,252 @@ def get_user_profile_from_firebase(uid):
         return {}
     
 
+def get_baseline_targets_by_goal(goal):
+    """Define baseline targets for different fitness goals"""
+    baselines = {
+        'weight_loss': {
+            'sleep_hours': 7.5,
+            'sleep_quality': 4.0,
+            'calories': 1800,
+            'water_intake': 2.5,
+            'workout_duration': 45,
+            'active_days': 5,
+            'junk_food_level': 1.0,
+            'target_description': 'Healthy weight loss with sustainable habits'
+        },
+        'muscle_gain': {
+            'sleep_hours': 8.0,
+            'sleep_quality': 4.0,
+            'calories': 2400,
+            'water_intake': 3.0,
+            'workout_duration': 60,
+            'active_days': 5,
+            'junk_food_level': 1.5,
+            'target_description': 'Muscle building with adequate recovery'
+        },
+        'endurance': {
+            'sleep_hours': 7.5,
+            'sleep_quality': 4.0,
+            'calories': 2200,
+            'water_intake': 3.5,
+            'workout_duration': 75,
+            'active_days': 6,
+            'junk_food_level': 1.0,
+            'target_description': 'Endurance training with optimal fueling'
+        },
+        'general': {
+            'sleep_hours': 7.5,
+            'sleep_quality': 3.5,
+            'calories': 2000,
+            'water_intake': 2.5,
+            'workout_duration': 30,
+            'active_days': 4,
+            'junk_food_level': 2.0,
+            'target_description': 'General health and wellness maintenance'
+        }
+    }
+    return baselines.get(goal.lower(), baselines['general'])
+
+def save_user_baseline(uid, goal, custom_targets=None):
+    """Save user's baseline targets to Firebase"""
+    try:
+        baseline_targets = get_baseline_targets_by_goal(goal)
+        
+        # Allow custom targets if provided
+        if custom_targets:
+            baseline_targets.update(custom_targets)
+        
+        baseline_data = {
+            'goal': goal,
+            'targets': baseline_targets,
+            'created_at': timezone.now().isoformat(),
+            'is_active': True
+        }
+        
+        db.child("user_baselines").child(uid).set(baseline_data)
+        print(f"Baseline saved for user {uid} with goal {goal}")
+        return True
+        
+    except Exception as e:
+        print(f"Error saving baseline for user {uid}: {str(e)}")
+        return False
+
+def get_user_baseline(uid):
+    """Retrieve user's baseline from Firebase"""
+    try:
+        baseline = db.child("user_baselines").child(uid).get().val()
+        return baseline if baseline else None
+    except Exception as e:
+        print(f"Error retrieving baseline for user {uid}: {str(e)}")
+        return None
+
+def calculate_progress_score(current_stats, baseline_targets):
+    """Calculate progress score comparing current performance to baseline targets"""
+    if not current_stats or not baseline_targets:
+        return None
+    
+    targets = baseline_targets.get('targets', {})
+    progress_metrics = {}
+    
+    # Sleep Progress (weight: 20%)
+    sleep_score = 0
+    if current_stats.get('avg_sleep', 0) > 0:
+        sleep_target = targets.get('sleep_hours', 7.5)
+        sleep_actual = current_stats['avg_sleep']
+        # Score between 0-100, penalize both over and under sleeping
+        if sleep_actual >= sleep_target * 0.8 and sleep_actual <= sleep_target * 1.2:
+            sleep_score = min(100, (sleep_actual / sleep_target) * 100)
+        else:
+            sleep_score = max(0, 100 - abs(sleep_actual - sleep_target) * 20)
+    
+    # Sleep Quality Progress (weight: 15%)
+    sleep_quality_score = 0
+    if current_stats.get('avg_sleep_quality', 0) > 0:
+        quality_target = targets.get('sleep_quality', 3.5)
+        quality_actual = current_stats['avg_sleep_quality']
+        sleep_quality_score = min(100, (quality_actual / quality_target) * 100)
+    
+    # Workout Consistency Progress (weight: 25%)
+    workout_score = 0
+    active_days_target = targets.get('active_days', 4)
+    active_days_actual = current_stats.get('active_days', 0)
+    workout_score = min(100, (active_days_actual / active_days_target) * 100)
+    
+    # Workout Duration Progress (weight: 15%)
+    duration_score = 0
+    if current_stats.get('avg_workout_duration', 0) > 0:
+        duration_target = targets.get('workout_duration', 30)
+        duration_actual = current_stats['avg_workout_duration']
+        duration_score = min(100, (duration_actual / duration_target) * 100)
+    
+    # Hydration Progress (weight: 10%)
+    water_score = 0
+    if current_stats.get('avg_water', 0) > 0:
+        water_target = targets.get('water_intake', 2.5)
+        water_actual = current_stats['avg_water']
+        water_score = min(100, (water_actual / water_target) * 100)
+    
+    # Diet Quality Progress (weight: 15%) - Lower junk food is better
+    diet_score = 0
+    if 'avg_junk_food' in current_stats:
+        junk_target = targets.get('junk_food_level', 2.0)
+        junk_actual = current_stats['avg_junk_food']
+        # Invert score - lower junk food = higher score
+        if junk_actual <= junk_target:
+            diet_score = 100
+        else:
+            diet_score = max(0, 100 - (junk_actual - junk_target) * 25)
+    
+    # Calculate weighted overall score
+    weights = {
+        'sleep': 0.20,
+        'sleep_quality': 0.15,
+        'workout_consistency': 0.25,
+        'workout_duration': 0.15,
+        'hydration': 0.10,
+        'diet_quality': 0.15
+    }
+    
+    scores = {
+        'sleep': sleep_score,
+        'sleep_quality': sleep_quality_score,
+        'workout_consistency': workout_score,
+        'workout_duration': duration_score,
+        'hydration': water_score,
+        'diet_quality': diet_score
+    }
+    
+    overall_score = sum(scores[key] * weights[key] for key in scores.keys())
+    
+    progress_metrics = {
+        'overall_score': round(overall_score, 1),
+        'individual_scores': scores,
+        'targets': targets,
+        'current_values': {
+            'sleep_hours': current_stats.get('avg_sleep', 0),
+            'sleep_quality': current_stats.get('avg_sleep_quality', 0),
+            'active_days': active_days_actual,
+            'workout_duration': current_stats.get('avg_workout_duration', 0),
+            'water_intake': current_stats.get('avg_water', 0),
+            'junk_food_level': current_stats.get('avg_junk_food', 0)
+        },
+        'progress_level': get_progress_level(overall_score)
+    }
+    
+    return progress_metrics
+
+def get_progress_level(score):
+    """Convert progress score to descriptive level"""
+    if score >= 90:
+        return {'level': 'Excellent', 'color': '#10b981', 'icon': '🏆'}
+    elif score >= 75:
+        return {'level': 'Great', 'color': '#059669', 'icon': '⭐'}
+    elif score >= 60:
+        return {'level': 'Good', 'color': '#3b82f6', 'icon': '👍'}
+    elif score >= 40:
+        return {'level': 'Fair', 'color': '#f59e0b', 'icon': '📈'}
+    else:
+        return {'level': 'Needs Work', 'color': '#ef4444', 'icon': '💪'}
+
+def save_progress_history(uid, progress_data):
+    """Save weekly progress data for historical tracking"""
+    try:
+        week_key = timezone.now().date().strftime('%Y-%m-%d')
+        history_data = {
+            'week_date': week_key,
+            'overall_score': progress_data['overall_score'],
+            'individual_scores': progress_data['individual_scores'],
+            'progress_level': progress_data['progress_level'],
+            'recorded_at': timezone.now().isoformat()
+        }
+        
+        db.child("progress_history").child(uid).child(week_key).set(history_data)
+        return True
+    except Exception as e:
+        print(f"Error saving progress history for user {uid}: {str(e)}")
+        return False
+
+def get_progress_trend(uid, weeks=4):
+    """Get progress trend over specified number of weeks"""
+    try:
+        history = db.child("progress_history").child(uid).order_by_key().limit_to_last(weeks).get().val()
+        
+        if not history:
+            return None
+        
+        trend_data = []
+        for week_key, data in history.items():
+            trend_data.append({
+                'week': week_key,
+                'score': data.get('overall_score', 0),
+                'level': data.get('progress_level', {}).get('level', 'Unknown')
+            })
+        
+        # Calculate trend direction
+        if len(trend_data) >= 2:
+            recent_avg = sum(item['score'] for item in trend_data[-2:]) / 2
+            older_avg = sum(item['score'] for item in trend_data[:-2]) / max(1, len(trend_data) - 2) if len(trend_data) > 2 else trend_data[0]['score']
+            
+            if recent_avg > older_avg + 5:
+                trend_direction = 'improving'
+            elif recent_avg < older_avg - 5:
+                trend_direction = 'declining'
+            else:
+                trend_direction = 'stable'
+        else:
+            trend_direction = 'new'
+        
+        return {
+            'trend_data': trend_data,
+            'trend_direction': trend_direction,
+            'weeks_tracked': len(trend_data)
+        }
+        
+    except Exception as e:
+        print(f"Error getting progress trend for user {uid}: {str(e)}")
+        return None
+
+
 def load_workout_model():
     """Load the trained workout plan model"""
     try:
@@ -935,7 +1181,7 @@ def generate_plans_manually(request):
     return JsonResponse({'success': False, 'error': 'Method not allowed'})
 
 # Updated dashboard view to use saved plans
-def dashboard_view_updated(request):
+def dashboard_view_with_progress(request):
     user = request.session.get('user')
     if not user:
         messages.warning(request, "Please login to access dashboard.")
@@ -944,39 +1190,35 @@ def dashboard_view_updated(request):
     uid = user['uid']
     
     try:
-        # Get user profile from Firebase
+        # Get existing data
         user_profile = get_user_profile_from_firebase(uid)
-        
-        # Get today's record status
         today = timezone.now().date()
         has_today_record = has_record_for_date(uid, today)
-        
-        # Get weekly stats
         weekly_stats = get_weekly_stats(uid)
         
-        # Get recent records for charts (last 7 days)
+        # Get charts data
         end_date = timezone.now().date()
         start_date = end_date - timedelta(days=6)
-        
         recent_records = get_health_records_from_firebase(uid, start_date, end_date)
         chart_data = prepare_chart_data(recent_records, start_date, end_date)
 
-        # Get SAVED weekly plan instead of generating it
+        # Get saved weekly plan
         combined_plan = get_current_weekly_plan(uid)
         
-        # If no saved plan exists, generate one (fallback for new users)
-        if not combined_plan and weekly_stats:
-            print(f"No saved plan found for user {uid}, generating fallback plan")
-            try:
-                temp_plan = predict_weekly_health_and_fitness(uid)
-                if temp_plan:
-                    # Save this as current plan
-                    current_monday, _ = get_week_start_end_dates()
-                    save_weekly_plan_to_firebase(uid, current_monday, temp_plan['diet_plan'], temp_plan['workout_plan'])
-                    combined_plan = get_current_weekly_plan(uid)
-            except Exception as e:
-                print(f"Error generating fallback plan: {str(e)}")
-
+        # Calculate progress if we have both baseline and weekly stats
+        progress_data = None
+        progress_trend = None
+        
+        if weekly_stats:
+            baseline = get_user_baseline(uid)
+            if baseline:
+                progress_data = calculate_progress_score(weekly_stats, baseline)
+                if progress_data:
+                    # Save this week's progress
+                    save_progress_history(uid, progress_data)
+                    # Get historical trend
+                    progress_trend = get_progress_trend(uid, weeks=4)
+        
         context = {
             'user': user,
             'user_profile': user_profile,
@@ -990,12 +1232,14 @@ def dashboard_view_updated(request):
                 'start_date': combined_plan.get('week_start_date') if combined_plan else None,
                 'end_date': combined_plan.get('week_end_date') if combined_plan else None,
                 'generated_at': localtime(parse_datetime(combined_plan.get('generated_at'))).strftime("%Y-%m-%d %H:%M:%S") if combined_plan else None
-            }
+            },
+            'progress_data': progress_data,
+            'progress_trend': progress_trend,
+            'baseline': get_user_baseline(uid)
         }
 
-        
     except Exception as e:
-        print(f"Error in dashboard_view: {str(e)}")
+        print(f"Error in dashboard_view_with_progress: {str(e)}")
         context = {
             'user': user,
             'user_profile': {},
@@ -1005,12 +1249,56 @@ def dashboard_view_updated(request):
             'current_streak': 0,
             'total_records': 0,
             'combined_plan': None,
-            'plan_week_info': None
+            'plan_week_info': None,
+            'progress_data': None,
+            'progress_trend': None,
+            'baseline': None
         }
         messages.error(request, "Error loading dashboard data. Please try again.")
     
     return render(request, 'dashboard.html', context)
 
+@csrf_exempt
+def update_baseline(request):
+    """API endpoint to update user's baseline targets"""
+    user = request.session.get('user')
+    if not user:
+        return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
+    
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            uid = user['uid']
+            
+            # Get current baseline
+            current_baseline = get_user_baseline(uid)
+            if not current_baseline:
+                return JsonResponse({'success': False, 'error': 'No baseline found'}, status=404)
+            
+            # Update targets
+            updated_targets = current_baseline['targets'].copy()
+            
+            # Update with new values if provided
+            if 'sleep_hours' in data:
+                updated_targets['sleep_hours'] = float(data['sleep_hours'])
+            if 'calories' in data:
+                updated_targets['calories'] = int(data['calories'])
+            if 'water_intake' in data:
+                updated_targets['water_intake'] = float(data['water_intake'])
+            if 'active_days' in data:
+                updated_targets['active_days'] = int(data['active_days'])
+            if 'workout_duration' in data:
+                updated_targets['workout_duration'] = int(data['workout_duration'])
+                
+            # Save updated baseline
+            save_user_baseline(uid, current_baseline['goal'], updated_targets)
+            
+            return JsonResponse({'success': True, 'message': 'Baseline updated successfully'})
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
 
 def form_view(request):
     user = request.session.get('user')
@@ -1345,12 +1633,18 @@ def prepare_chart_data(records_dict, start_date, end_date):
     print(f"Final chart data: {chart_data}")
     return chart_data
 
-def signup_view(request):
+def signup_view_with_baseline(request):
     if request.method == 'POST':
         name = request.POST.get('name')
         email = request.POST.get('email')
         password = request.POST.get('password')
         goal = request.POST.get('goal')
+        
+        # Get custom baseline targets if provided
+        custom_sleep = request.POST.get('target_sleep_hours')
+        custom_calories = request.POST.get('target_calories')
+        custom_workouts = request.POST.get('target_weekly_workouts')
+        custom_water = request.POST.get('target_water')
 
         # Basic validation
         if not all([name, email, password, goal]):
@@ -1370,8 +1664,22 @@ def signup_view(request):
                 "created_at": timezone.now().isoformat()
             }
             db.child("users").child(uid).set(data)
+            
+            # Set up baseline targets
+            custom_targets = {}
+            if custom_sleep:
+                custom_targets['sleep_hours'] = float(custom_sleep)
+            if custom_calories:
+                custom_targets['calories'] = int(custom_calories)
+            if custom_workouts:
+                custom_targets['active_days'] = int(custom_workouts)
+            if custom_water:
+                custom_targets['water_intake'] = float(custom_water)
+            
+            # Save baseline
+            save_user_baseline(uid, goal, custom_targets if custom_targets else None)
 
-            messages.success(request, "Registered successfully! Please login.")
+            messages.success(request, "Registered successfully! Your baseline targets have been set based on your goal.")
             return redirect('login')
         except Exception as e:
             try:
@@ -1380,7 +1688,17 @@ def signup_view(request):
                 error_detail = str(e)
             messages.error(request, f"Registration failed: {error_detail}")
     
-    return render(request, 'signup.html')
+    # Pass baseline options to template
+    context = {
+        'baseline_options': {
+            'weight_loss': get_baseline_targets_by_goal('weight_loss'),
+            'muscle_gain': get_baseline_targets_by_goal('muscle_gain'),
+            'endurance': get_baseline_targets_by_goal('endurance'),
+            'general': get_baseline_targets_by_goal('general')
+        }
+    }
+    return render(request, 'signup.html', context)
+
 
 def logout_view(request):
     """Logout function to clear session"""
