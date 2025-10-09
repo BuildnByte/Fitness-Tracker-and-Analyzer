@@ -90,6 +90,29 @@
             background: rgba(102, 126, 234, 0.2);
         }
 
+        .plan-info-banner {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border-radius: 15px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .plan-dates {
+            display: flex;
+            gap: 2rem;
+            color: #374151;
+            font-size: 0.9rem;
+        }
+
+        .plan-dates strong {
+            color: #667eea;
+        }
+
         .plan-overview {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(20px);
@@ -115,29 +138,47 @@
             color: #374151;
             font-size: 1.1rem;
             line-height: 1.6;
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
         }
 
         .data-context {
             background: rgba(102, 126, 234, 0.1);
             border-radius: 12px;
-            padding: 1rem;
+            padding: 1.5rem;
             margin-top: 1rem;
         }
 
         .data-context h4 {
             color: #667eea;
-            font-size: 0.9rem;
+            font-size: 1rem;
             font-weight: 600;
-            margin-bottom: 0.5rem;
+            margin-bottom: 1rem;
         }
 
         .data-summary {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 1rem;
-            color: #374151;
+        }
+
+        .data-item {
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 8px;
+            padding: 0.75rem;
+            text-align: center;
+        }
+
+        .data-item strong {
+            display: block;
+            color: #667eea;
             font-size: 0.85rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .data-item span {
+            color: #1a1a1a;
+            font-size: 1.1rem;
+            font-weight: 600;
         }
 
         .targets-grid {
@@ -218,6 +259,11 @@
             display: flex;
             align-items: center;
             gap: 1rem;
+            transition: transform 0.2s ease;
+        }
+
+        .recommendation-item:hover {
+            transform: translateX(5px);
         }
 
         .recommendation-icon {
@@ -319,6 +365,12 @@
 
             .header h1 {
                 font-size: 1.5rem;
+                flex-direction: column;
+            }
+
+            .plan-dates {
+                flex-direction: column;
+                gap: 0.5rem;
             }
         }
 
@@ -338,14 +390,16 @@
         <div class="header">
             <div>
                 <h1>
-                    AI Diet Plan
+                    🍎 AI Diet Plan
                     <span class="ai-badge">🤖 AI Powered</span>
                 </h1>
             </div>
             <a href="{% url 'dashboard' %}" class="back-btn">← Back to Dashboard</a>
         </div>
 
-        {% if diet_plan %}
+          {% if diet_plan %}
+            
+
             <div class="plan-overview">
                 <div class="plan-type">
                     <span>📋</span>
@@ -353,19 +407,45 @@
                 </div>
                 
                 <div class="plan-summary">
+                    <strong>{{ diet_plan.headline }}</strong><br>
                     {{ diet_plan.summary }}
                 </div>
 
+                {% if weekly_stats %}
                 <div class="data-context">
-                    <h4>📊 Based on your {{ weekly_stats.active_days }}-day average:</h4>
+                    <h4>📊 Based on your {{ weekly_stats.total_days }}-day average ({{ weekly_stats.active_days }} active days):</h4>
                     <div class="data-summary">
-                        <div><strong>Sleep:</strong> {{ weekly_stats.avg_sleep }}h</div>
-                        <div><strong>Calories:</strong> {{ weekly_stats.avg_calories|floatformat:0 }}</div>
-                        <div><strong>Protein:</strong> {{ diet_plan.weekly_data.protein }}g</div>
-                        <div><strong>Carbs:</strong> {{ diet_plan.weekly_data.carbs }}g</div>
-                        <div><strong>Water:</strong> {{ diet_plan.weekly_data.water_l }}L</div>
+                        <div class="data-item">
+                            <strong>Sleep</strong>
+                            <span>{{ weekly_stats.avg_sleep }}h</span>
+                        </div>
+                        <div class="data-item">
+                            <strong>Sleep Quality</strong>
+                            <span>{{ weekly_stats.avg_sleep_quality }}/5</span>
+                        </div>
+                        <div class="data-item">
+                            <strong>Calories</strong>
+                            <span>{{ weekly_stats.avg_calories|floatformat:0 }}</span>
+                        </div>
+                        <div class="data-item">
+                            <strong>Water</strong>
+                            <span>{{ weekly_stats.avg_water }}L</span>
+                        </div>
+                        <div class="data-item">
+                            <strong>Workout</strong>
+                            <span>{{ weekly_stats.avg_workout_duration }} min</span>
+                        </div>
+                        <div class="data-item">
+                            <strong>Junk Food</strong>
+                            <span>{{ weekly_stats.avg_junk_food }}/4</span>
+                        </div>
+                        <div class="data-item">
+                            <strong>Popular Workout</strong>
+                            <span>{{ weekly_stats.most_popular_workout|title }}</span>
+                        </div>
                     </div>
                 </div>
+                {% endif %}
             </div>
 
             <div class="targets-grid">
@@ -415,9 +495,9 @@
             <div class="progress-section">
                 <h3>📈 Track Your Progress</h3>
                 <div class="progress-tip">
-                    Keep logging your daily health data to get updated AI recommendations. 
+                    <strong>💡 Pro Tip:</strong> Keep logging your daily health data to get updated AI recommendations. 
                     Your plan will automatically adjust based on your progress and changing patterns. 
-                    Check back weekly for refined suggestions!
+                    Check back weekly for refined suggestions tailored to your journey!
                 </div>
             </div>
 
@@ -434,36 +514,5 @@
             </div>
         {% endif %}
     </div>
-
-    <script>
-        // Add some interactive animations
-        document.querySelectorAll('.target-card').forEach(card => {
-            card.addEventListener('mouseenter', function() {
-                this.style.transform = 'translateY(-5px) scale(1.02)';
-            });
-            
-            card.addEventListener('mouseleave', function() {
-                this.style.transform = 'translateY(0) scale(1)';
-            });
-        });
-
-        document.querySelectorAll('.recommendation-item').forEach(item => {
-            item.addEventListener('mouseenter', function() {
-                this.style.transform = 'translateX(5px)';
-            });
-            
-            item.addEventListener('mouseleave', function() {
-                this.style.transform = 'translateX(0)';
-            });
-        });
-
-        // Auto-refresh suggestion
-        {% if diet_plan %}
-            console.log('Diet plan generated successfully:', {
-                plan_style: '{{ diet_plan.plan_style }}',
-                targets: {{ diet_plan.targets|safe }}
-            });
-        {% endif %}
-    </script>
 </body>
 </html>

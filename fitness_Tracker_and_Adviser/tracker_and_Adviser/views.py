@@ -2,8 +2,6 @@ import firebase_admin
 import pandas as pd
 from firebase_admin import credentials
 from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login
-from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -14,204 +12,12 @@ import os
 import pyrebase
 from django.conf import settings
 import json
-from datetime import datetime, date, timedelta
-from django.core.management.base import BaseCommand
 from datetime import datetime, timedelta
-import pytz
-from celery import shared_task  # If using Celery for background tasks
-from django.utils.dateparse import parse_datetime
-from django.utils.timezone import localtime
+from collections import Counter
 
-def get_week_start_end_dates(target_date=None):
-    """Get the start (Monday) and end (Sunday) dates for a given week"""
-    if target_date is None:
-        target_date = timezone.now().date()
-    
-    # Find the Monday of the current week
-    days_since_monday = target_date.weekday()
-    week_start = target_date - timedelta(days=days_since_monday)
-    week_end = week_start + timedelta(days=6)
-    
-    return week_start, week_end
-
-def get_next_week_dates():
-    """Get start and end dates for next week"""
-    today = timezone.now().date()
-    days_until_next_monday = 7 - today.weekday()
-    next_monday = today + timedelta(days=days_until_next_monday)
-    next_sunday = next_monday + timedelta(days=6)
-    
-    return next_monday, next_sunday
-
-def save_weekly_plan_to_firebase(uid, week_start_date, diet_plan, workout_plan):
-    """Save the generated weekly plan to Firebase"""
-    try:
-        week_key = week_start_date.strftime('%Y-%m-%d')  # Use Monday's date as key
-        
-        plan_data = {
-            'week_start_date': week_start_date.strftime('%Y-%m-%d'),
-            'week_end_date': (week_start_date + timedelta(days=6)).strftime('%Y-%m-%d'),
-            'generated_at': timezone.now().isoformat(),
-            'diet_plan': diet_plan,
-            'workout_plan': workout_plan,
-            'is_current': True  # Mark as current plan
-        }
-        
-        # Save the plan
-        db.child("weekly_plans").child(uid).child(week_key).set(plan_data)
-        
-        # Mark previous plans as not current
-        all_plans = db.child("weekly_plans").child(uid).get().val()
-        if all_plans:
-            for plan_key, plan in all_plans.items():
-                if plan_key != week_key:
-                    db.child("weekly_plans").child(uid).child(plan_key).update({'is_current': False})
-        
-        print(f"Successfully saved weekly plan for user {uid} starting {week_start_date}")
-        return True
-        
-    except Exception as e:
-        print(f"Error saving weekly plan for user {uid}: {str(e)}")
-        return False
-
-def get_weekly_plan_from_firebase(uid, week_start_date=None):
-    """Retrieve weekly plan from Firebase"""
-    try:
-        if week_start_date is None:
-            # Get current week's plan
-            current_monday, _ = get_week_start_end_dates()
-            week_key = current_monday.strftime('%Y-%m-%d')
-        else:
-            week_key = week_start_date.strftime('%Y-%m-%d')
-        
-        plan = db.child("weekly_plans").child(uid).child(week_key).get().val()
-        
-        if plan:
-            print(f"Retrieved weekly plan for user {uid} for week {week_key}")
-            return plan
-        else:
-            print(f"No weekly plan found for user {uid} for week {week_key}")
-            return None
-            
-    except Exception as e:
-        print(f"Error retrieving weekly plan for user {uid}: {str(e)}")
-        return None
-
-def get_current_weekly_plan(uid):
-    """Get the current active weekly plan for a user"""
-    try:
-        all_plans = db.child("weekly_plans").child(uid).get().val()
-        if not all_plans:
-            return None
-        
-        # Find the current plan
-        for plan_key, plan in all_plans.items():
-            if plan.get('is_current', False):
-                return plan
-        
-        # If no current plan found, try to get this week's plan
-        current_monday, _ = get_week_start_end_dates()
-        return get_weekly_plan_from_firebase(uid, current_monday)
-        
-    except Exception as e:
-        print(f"Error getting current weekly plan for user {uid}: {str(e)}")
-        return None
-
-def generate_weekly_plan_for_user(uid):
-    """Generate and save weekly plan for a specific user"""
-    try:
-        print(f"Generating weekly plan for user {uid}")
-        
-        # Get the data from the current week (Monday to Sunday)
-        current_monday, current_sunday = get_week_start_end_dates()
-        
-        # Get health records for the current week
-        records = get_health_records_from_firebase(uid, current_monday, current_sunday)
-        
-        if not records or len(records) < 3:
-            print(f"Insufficient data for user {uid}: {len(records) if records else 0} records")
-            return False
-        
-        # Generate the plan using existing function
-        combined_plan = predict_weekly_health_and_fitness(uid)
-        
-        if not combined_plan:
-            print(f"Failed to generate plan for user {uid}")
-            return False
-        
-        # Get next week's dates
-        next_monday, next_sunday = get_next_week_dates()
-        
-        # Save the plan for next week
-        success = save_weekly_plan_to_firebase(
-            uid, 
-            next_monday, 
-            combined_plan['diet_plan'], 
-            combined_plan['workout_plan']
-        )
-        
-        if success:
-            print(f"Successfully generated and saved weekly plan for user {uid}")
-        
-        return success
-        
-    except Exception as e:
-        print(f"Error generating weekly plan for user {uid}: {str(e)}")
-        return False
-
-def generate_all_weekly_plans():
-    """Generate weekly plans for all users - called on Sunday nights"""
-    try:
-        print("Starting weekly plan generation for all users...")
-        
-        # Get all users from Firebase
-        all_users = db.child("users").get().val()
-        
-        if not all_users:
-            print("No users found")
-            return
-        
-        success_count = 0
-        total_users = len(all_users)
-        
-        for uid in all_users.keys():
-            try:
-                if generate_weekly_plan_for_user(uid):
-                    success_count += 1
-                    print(f"✓ Generated plan for user {uid}")
-                else:
-                    print(f"✗ Failed to generate plan for user {uid}")
-            except Exception as e:
-                print(f"✗ Error processing user {uid}: {str(e)}")
-        
-        print(f"Weekly plan generation completed: {success_count}/{total_users} users")
-        
-        # Log the batch operation
-        batch_log = {
-            'timestamp': timezone.now().isoformat(),
-            'total_users': total_users,
-            'successful_plans': success_count,
-            'failed_plans': total_users - success_count
-        }
-        db.child("plan_generation_logs").push(batch_log)
-        
-    except Exception as e:
-        print(f"Error in batch weekly plan generation: {str(e)}")
-
-# Celery task for background processing (optional)
-@shared_task
-def weekly_plan_generation_task():
-    """Celery task to generate weekly plans"""
-    generate_all_weekly_plans()
-
-# Django management command
-class Command(BaseCommand):
-    help = 'Generate weekly plans for all users'
-    
-    def handle(self, *args, **options):
-        self.stdout.write('Starting weekly plan generation...')
-        generate_all_weekly_plans()
-        self.stdout.write(self.style.SUCCESS('Weekly plan generation completed'))
+# ============================================================================
+# FIREBASE CONFIGURATION
+# ============================================================================
 
 firebase_config = {
     "apiKey": settings.FIREBASE_API_KEY,
@@ -235,236 +41,279 @@ if not firebase_admin._apps:
     cred = credentials.Certificate(firebase_file_path)
     firebase_admin.initialize_app(cred)
 
-def login_view(request):
-    if request.method == 'POST':
-        email = request.POST.get('email')
-        password = request.POST.get('password')
+# ============================================================================
+# UTILITY FUNCTIONS
+# ============================================================================
 
-        try:
-            user = auth.sign_in_with_email_and_password(email, password)
-            uid = user['localId']
-            user_data = db.child("users").child(uid).get().val()
+def get_week_dates(offset_weeks=0):
+    """Get start and end dates for current week or offset weeks"""
+    today = timezone.now().date()
+    days_since_monday = today.weekday()
+    week_start = today - timedelta(days=days_since_monday) + timedelta(weeks=offset_weeks)
+    week_end = week_start + timedelta(days=6)
+    return week_start, week_end
 
-            # Check if user_data exists
-            if user_data:
-                request.session['user'] = {
-                    'email': email,
-                    'name': user_data.get('name', ''),
-                    'goal': user_data.get('goal', ''),
-                    'uid': uid
-                }
-                
-                messages.success(request, "Login successful!")
-                return redirect('dashboard')
-            else:
-                messages.error(request, "User profile not found.")
-        except Exception as e:
-            try:
-                error_detail = json.loads(e.args[1])['error']['message']
-            except (IndexError, KeyError, json.JSONDecodeError):
-                error_detail = str(e)
-            messages.error(request, f"Login failed: {error_detail}")
-    
-    return render(request, 'login.html')
+def safe_int(value, default=0):
+    """Safely convert value to int"""
+    try:
+        return int(float(value)) if value not in [None, ''] else default
+    except (ValueError, TypeError):
+        return default
 
-def get_user_profile_from_firebase(uid):
-    """Helper function to get user profile from Firebase"""
+def safe_float(value, default=0.0):
+    """Safely convert value to float"""
+    try:
+        return float(value) if value not in [None, ''] else default
+    except (ValueError, TypeError):
+        return default
+
+def clamp(value, min_val, max_val):
+    """Clamp value between min and max"""
+    return max(min_val, min(value, max_val))
+
+# ============================================================================
+# FIREBASE DATA FUNCTIONS
+# ============================================================================
+
+def get_user_profile(uid):
+    """Get user profile from Firebase"""
     try:
         user_data = db.child("users").child(uid).get().val()
         return user_data if user_data else {}
     except:
         return {}
-    
 
-def get_baseline_targets_by_goal(goal):
-    """Define baseline targets for different fitness goals"""
+def get_health_records(uid, start_date=None, end_date=None):
+    """Get health records from Firebase with optional date filtering"""
+    try:
+        records_ref = db.child("health_records").child(uid)
+        all_records = records_ref.get().val()
+        
+        if not all_records:
+            return {}
+        
+        if start_date and end_date:
+            start_str = start_date.strftime('%Y-%m-%d')
+            end_str = end_date.strftime('%Y-%m-%d')
+            return {k: v for k, v in all_records.items() if start_str <= k <= end_str}
+        
+        return all_records
+    except Exception as e:
+        print(f"Error fetching health records: {str(e)}")
+        return {}
+
+def has_record_for_date(uid, check_date):
+    """Check if user has a health record for specific date"""
+    date_str = check_date.strftime('%Y-%m-%d')
+    try:
+        record = db.child("health_records").child(uid).child(date_str).get().val()
+        return record is not None
+    except:
+        return False
+
+# ============================================================================
+# STATISTICS FUNCTIONS
+# ============================================================================
+
+def get_weekly_stats(uid):
+    """Calculate comprehensive weekly statistics"""
+    start_date, end_date = get_week_dates()
+    records = get_health_records(uid, start_date, end_date)
+    
+    if not records:
+        return None
+    
+    totals = {
+        'sleep': 0, 'sleep_quality': 0, 'calories': 0,
+        'water': 0, 'workout_duration': 0, 'junk_food': 0,
+        'active_days': 0
+    }
+    workout_types = []
+    
+    for record in records.values():
+        totals['sleep'] += safe_float(record.get('sleep_hours', 0))
+        totals['sleep_quality'] += safe_int(record.get('sleep_quality', 0))
+        totals['calories'] += safe_int(record.get('total_calories', 0))
+        totals['water'] += safe_float(record.get('water_intake', 0))
+        totals['junk_food'] += safe_int(record.get('junk_food_level', 0))
+        
+        workout_duration = safe_int(record.get('workout_duration', 0))
+        totals['workout_duration'] += workout_duration
+        if workout_duration > 0:
+            totals['active_days'] += 1
+        
+        # Handle workout types
+        types = record.get('workout_types', [])
+        if isinstance(types, str):
+            types = json.loads(types) if types else []
+        workout_types.extend(types)
+    
+    count = len(records)
+    most_popular = Counter(workout_types).most_common(1)[0][0] if workout_types else 'none'
+    
+    return {
+        'avg_sleep': round(totals['sleep'] / count, 1),
+        'avg_sleep_quality': round(totals['sleep_quality'] / count, 1),
+        'avg_calories': round(totals['calories'] / count),
+        'avg_water': round(totals['water'] / count, 1),
+        'avg_workout_duration': round(totals['workout_duration'] / count),
+        'avg_junk_food': round(totals['junk_food'] / count, 1),
+        'total_days': count,
+        'active_days': totals['active_days'],
+        'most_popular_workout': most_popular
+    }
+
+def get_current_streak(uid):
+    """Calculate current consecutive day streak (simplified)"""
+    try:
+        records = db.child("health_records").child(uid).get().val()
+        if not records:
+            return 0
+        
+        # Get sorted dates (most recent first)
+        dates = sorted([
+            datetime.strptime(d, '%Y-%m-%d').date() 
+            for d in records.keys()
+        ], reverse=True)
+        
+        today = timezone.now().date()
+        
+        # Must have record today or yesterday to have active streak
+        if (today - dates[0]).days > 1:
+            return 0
+        
+        # Count consecutive days
+        streak = 1
+        for i in range(1, len(dates)):
+            if (dates[i-1] - dates[i]).days == 1:
+                streak += 1
+            else:
+                break
+        
+        return streak
+    except Exception as e:
+        print(f"Error calculating streak: {str(e)}")
+        return 0
+
+# ============================================================================
+# BASELINE & PROGRESS TRACKING
+# ============================================================================
+
+def get_baseline_targets(goal):
+    """Get baseline targets for fitness goal"""
     baselines = {
         'weight_loss': {
-            'sleep_hours': 7.5,
-            'sleep_quality': 4.0,
-            'calories': 1800,
-            'water_intake': 2.5,
-            'workout_duration': 45,
-            'active_days': 5,
-            'junk_food_level': 1.0,
-            'target_description': 'Healthy weight loss with sustainable habits'
+            'sleep_hours': 7.5, 'sleep_quality': 4.0, 'calories': 1800,
+            'water_intake': 2.5, 'workout_duration': 45, 'active_days': 5,
+            'junk_food_level': 1.0, 'target_description': 'Healthy weight loss'
         },
         'muscle_gain': {
-            'sleep_hours': 8.0,
-            'sleep_quality': 4.0,
-            'calories': 2400,
-            'water_intake': 3.0,
-            'workout_duration': 60,
-            'active_days': 5,
-            'junk_food_level': 1.5,
-            'target_description': 'Muscle building with adequate recovery'
+            'sleep_hours': 8.0, 'sleep_quality': 4.0, 'calories': 2400,
+            'water_intake': 3.0, 'workout_duration': 60, 'active_days': 5,
+            'junk_food_level': 1.5, 'target_description': 'Muscle building'
         },
         'endurance': {
-            'sleep_hours': 7.5,
-            'sleep_quality': 4.0,
-            'calories': 2200,
-            'water_intake': 3.5,
-            'workout_duration': 75,
-            'active_days': 6,
-            'junk_food_level': 1.0,
-            'target_description': 'Endurance training with optimal fueling'
+            'sleep_hours': 7.5, 'sleep_quality': 4.0, 'calories': 2200,
+            'water_intake': 3.5, 'workout_duration': 75, 'active_days': 6,
+            'junk_food_level': 1.0, 'target_description': 'Endurance training'
         },
         'general': {
-            'sleep_hours': 7.5,
-            'sleep_quality': 3.5,
-            'calories': 2000,
-            'water_intake': 2.5,
-            'workout_duration': 30,
-            'active_days': 4,
-            'junk_food_level': 2.0,
-            'target_description': 'General health and wellness maintenance'
+            'sleep_hours': 7.5, 'sleep_quality': 3.5, 'calories': 2000,
+            'water_intake': 2.5, 'workout_duration': 30, 'active_days': 4,
+            'junk_food_level': 2.0, 'target_description': 'General wellness'
         }
     }
     return baselines.get(goal.lower(), baselines['general'])
 
 def save_user_baseline(uid, goal, custom_targets=None):
-    """Save user's baseline targets to Firebase"""
+    """Save user's baseline targets"""
     try:
-        baseline_targets = get_baseline_targets_by_goal(goal)
-        
-        # Allow custom targets if provided
+        targets = get_baseline_targets(goal)
         if custom_targets:
-            baseline_targets.update(custom_targets)
+            targets.update(custom_targets)
         
         baseline_data = {
             'goal': goal,
-            'targets': baseline_targets,
+            'targets': targets,
             'created_at': timezone.now().isoformat(),
             'is_active': True
         }
-        
         db.child("user_baselines").child(uid).set(baseline_data)
-        print(f"Baseline saved for user {uid} with goal {goal}")
         return True
-        
     except Exception as e:
-        print(f"Error saving baseline for user {uid}: {str(e)}")
+        print(f"Error saving baseline: {str(e)}")
         return False
 
 def get_user_baseline(uid):
-    """Retrieve user's baseline from Firebase"""
+    """Retrieve user's baseline"""
     try:
-        baseline = db.child("user_baselines").child(uid).get().val()
-        return baseline if baseline else None
-    except Exception as e:
-        print(f"Error retrieving baseline for user {uid}: {str(e)}")
+        return db.child("user_baselines").child(uid).get().val()
+    except:
         return None
 
 def calculate_progress_score(current_stats, baseline_targets):
-    """Calculate progress score comparing current performance to baseline targets"""
+    """Calculate progress score comparing current to baseline"""
     if not current_stats or not baseline_targets:
         return None
     
     targets = baseline_targets.get('targets', {})
-    progress_metrics = {}
     
-    # Sleep Progress (weight: 20%)
-    sleep_score = 0
-    if current_stats.get('avg_sleep', 0) > 0:
-        sleep_target = targets.get('sleep_hours', 7.5)
-        sleep_actual = current_stats['avg_sleep']
-        # Score between 0-100, penalize both over and under sleeping
-        if sleep_actual >= sleep_target * 0.8 and sleep_actual <= sleep_target * 1.2:
-            sleep_score = min(100, (sleep_actual / sleep_target) * 100)
-        else:
-            sleep_score = max(0, 100 - abs(sleep_actual - sleep_target) * 20)
-    
-    # Sleep Quality Progress (weight: 15%)
-    sleep_quality_score = 0
-    if current_stats.get('avg_sleep_quality', 0) > 0:
-        quality_target = targets.get('sleep_quality', 3.5)
-        quality_actual = current_stats['avg_sleep_quality']
-        sleep_quality_score = min(100, (quality_actual / quality_target) * 100)
-    
-    # Workout Consistency Progress (weight: 25%)
-    workout_score = 0
-    active_days_target = targets.get('active_days', 4)
-    active_days_actual = current_stats.get('active_days', 0)
-    workout_score = min(100, (active_days_actual / active_days_target) * 100)
-    
-    # Workout Duration Progress (weight: 15%)
-    duration_score = 0
-    if current_stats.get('avg_workout_duration', 0) > 0:
-        duration_target = targets.get('workout_duration', 30)
-        duration_actual = current_stats['avg_workout_duration']
-        duration_score = min(100, (duration_actual / duration_target) * 100)
-    
-    # Hydration Progress (weight: 10%)
-    water_score = 0
-    if current_stats.get('avg_water', 0) > 0:
-        water_target = targets.get('water_intake', 2.5)
-        water_actual = current_stats['avg_water']
-        water_score = min(100, (water_actual / water_target) * 100)
-    
-    # Diet Quality Progress (weight: 15%) - Lower junk food is better
-    diet_score = 0
-    if 'avg_junk_food' in current_stats:
-        junk_target = targets.get('junk_food_level', 2.0)
-        junk_actual = current_stats['avg_junk_food']
-        # Invert score - lower junk food = higher score
-        if junk_actual <= junk_target:
-            diet_score = 100
-        else:
-            diet_score = max(0, 100 - (junk_actual - junk_target) * 25)
-    
-    # Calculate weighted overall score
-    weights = {
-        'sleep': 0.20,
-        'sleep_quality': 0.15,
-        'workout_consistency': 0.25,
-        'workout_duration': 0.15,
-        'hydration': 0.10,
-        'diet_quality': 0.15
-    }
+    # Calculate individual scores (0-100)
+    def score_metric(actual, target, tolerance=0.2, invert=False):
+        if actual == 0:
+            return 0
+        ratio = actual / target
+        if invert:  # For metrics where lower is better (junk food)
+            return 100 if actual <= target else max(0, 100 - (actual - target) * 25)
+        # Within tolerance is 100%, penalize deviations
+        if (1 - tolerance) <= ratio <= (1 + tolerance):
+            return min(100, ratio * 100)
+        return max(0, 100 - abs(actual - target) * 20)
     
     scores = {
-        'sleep': sleep_score,
-        'sleep_quality': sleep_quality_score,
-        'workout_consistency': workout_score,
-        'workout_duration': duration_score,
-        'hydration': water_score,
-        'diet_quality': diet_score
+        'sleep': score_metric(current_stats.get('avg_sleep', 0), targets.get('sleep_hours', 7.5)),
+        'sleep_quality': score_metric(current_stats.get('avg_sleep_quality', 0), targets.get('sleep_quality', 3.5)),
+        'workout_consistency': score_metric(current_stats.get('active_days', 0), targets.get('active_days', 4)),
+        'workout_duration': score_metric(current_stats.get('avg_workout_duration', 0), targets.get('workout_duration', 30)),
+        'hydration': score_metric(current_stats.get('avg_water', 0), targets.get('water_intake', 2.5)),
+        'diet_quality': score_metric(current_stats.get('avg_junk_food', 0), targets.get('junk_food_level', 2.0), invert=True)
     }
     
-    overall_score = sum(scores[key] * weights[key] for key in scores.keys())
+    # Weighted overall score
+    weights = {'sleep': 0.20, 'sleep_quality': 0.15, 'workout_consistency': 0.25,
+               'workout_duration': 0.15, 'hydration': 0.10, 'diet_quality': 0.15}
     
-    progress_metrics = {
+    overall_score = sum(scores[key] * weights[key] for key in scores)
+    
+    # Progress level
+    if overall_score >= 90:
+        level = {'level': 'Excellent', 'color': '#10b981', 'icon': '🏆'}
+    elif overall_score >= 75:
+        level = {'level': 'Great', 'color': '#059669', 'icon': '⭐'}
+    elif overall_score >= 60:
+        level = {'level': 'Good', 'color': '#3b82f6', 'icon': '👍'}
+    elif overall_score >= 40:
+        level = {'level': 'Fair', 'color': '#f59e0b', 'icon': '📈'}
+    else:
+        level = {'level': 'Needs Work', 'color': '#ef4444', 'icon': '💪'}
+    
+    return {
         'overall_score': round(overall_score, 1),
         'individual_scores': scores,
         'targets': targets,
         'current_values': {
             'sleep_hours': current_stats.get('avg_sleep', 0),
             'sleep_quality': current_stats.get('avg_sleep_quality', 0),
-            'active_days': active_days_actual,
+            'active_days': current_stats.get('active_days', 0),
             'workout_duration': current_stats.get('avg_workout_duration', 0),
             'water_intake': current_stats.get('avg_water', 0),
             'junk_food_level': current_stats.get('avg_junk_food', 0)
         },
-        'progress_level': get_progress_level(overall_score)
+        'progress_level': level
     }
-    
-    return progress_metrics
-
-def get_progress_level(score):
-    """Convert progress score to descriptive level"""
-    if score >= 90:
-        return {'level': 'Excellent', 'color': '#10b981', 'icon': '🏆'}
-    elif score >= 75:
-        return {'level': 'Great', 'color': '#059669', 'icon': '⭐'}
-    elif score >= 60:
-        return {'level': 'Good', 'color': '#3b82f6', 'icon': '👍'}
-    elif score >= 40:
-        return {'level': 'Fair', 'color': '#f59e0b', 'icon': '📈'}
-    else:
-        return {'level': 'Needs Work', 'color': '#ef4444', 'icon': '💪'}
 
 def save_progress_history(uid, progress_data):
-    """Save weekly progress data for historical tracking"""
+    """Save weekly progress for historical tracking"""
     try:
         week_key = timezone.now().date().strftime('%Y-%m-%d')
         history_data = {
@@ -474,611 +323,257 @@ def save_progress_history(uid, progress_data):
             'progress_level': progress_data['progress_level'],
             'recorded_at': timezone.now().isoformat()
         }
-        
         db.child("progress_history").child(uid).child(week_key).set(history_data)
         return True
     except Exception as e:
-        print(f"Error saving progress history for user {uid}: {str(e)}")
+        print(f"Error saving progress history: {str(e)}")
         return False
 
 def get_progress_trend(uid, weeks=4):
-    """Get progress trend over specified number of weeks"""
+    """Get progress trend over specified weeks"""
     try:
         history = db.child("progress_history").child(uid).order_by_key().limit_to_last(weeks).get().val()
-        
         if not history:
             return None
         
-        trend_data = []
-        for week_key, data in history.items():
-            trend_data.append({
-                'week': week_key,
-                'score': data.get('overall_score', 0),
-                'level': data.get('progress_level', {}).get('level', 'Unknown')
-            })
+        trend_data = [{'week': k, 'score': v.get('overall_score', 0),
+                      'level': v.get('progress_level', {}).get('level', 'Unknown')}
+                     for k, v in history.items()]
         
-        # Calculate trend direction
+        # Determine trend direction
         if len(trend_data) >= 2:
             recent_avg = sum(item['score'] for item in trend_data[-2:]) / 2
-            older_avg = sum(item['score'] for item in trend_data[:-2]) / max(1, len(trend_data) - 2) if len(trend_data) > 2 else trend_data[0]['score']
+            older_avg = (sum(item['score'] for item in trend_data[:-2]) / 
+                        max(1, len(trend_data) - 2) if len(trend_data) > 2 else trend_data[0]['score'])
             
             if recent_avg > older_avg + 5:
-                trend_direction = 'improving'
+                direction = 'improving'
             elif recent_avg < older_avg - 5:
-                trend_direction = 'declining'
+                direction = 'declining'
             else:
-                trend_direction = 'stable'
+                direction = 'stable'
         else:
-            trend_direction = 'new'
+            direction = 'new'
         
-        return {
-            'trend_data': trend_data,
-            'trend_direction': trend_direction,
-            'weeks_tracked': len(trend_data)
-        }
-        
+        return {'trend_data': trend_data, 'trend_direction': direction, 'weeks_tracked': len(trend_data)}
     except Exception as e:
-        print(f"Error getting progress trend for user {uid}: {str(e)}")
+        print(f"Error getting progress trend: {str(e)}")
         return None
 
+# ============================================================================
+# WEEKLY PLAN FUNCTIONS
+# ============================================================================
+
+def get_current_weekly_plan(uid):
+    """Get current active weekly plan"""
+    try:
+        all_plans = db.child("weekly_plans").child(uid).get().val()
+        if not all_plans:
+            return None
+        
+        # Find current plan or most recent
+        for plan_key, plan in all_plans.items():
+            if plan.get('is_current', False):
+                return plan
+        
+        # Fallback to current week's plan
+        current_monday, _ = get_week_dates()
+        week_key = current_monday.strftime('%Y-%m-%d')
+        return db.child("weekly_plans").child(uid).child(week_key).get().val()
+    except Exception as e:
+        print(f"Error getting current plan: {str(e)}")
+        return None
+
+def save_weekly_plan(uid, week_start_date, diet_plan, workout_plan):
+    """Save generated weekly plan"""
+    try:
+        week_key = week_start_date.strftime('%Y-%m-%d')
+        
+        plan_data = {
+            'week_start_date': week_start_date.strftime('%Y-%m-%d'),
+            'week_end_date': (week_start_date + timedelta(days=6)).strftime('%Y-%m-%d'),
+            'generated_at': timezone.now().isoformat(),
+            'diet_plan': diet_plan,
+            'workout_plan': workout_plan,
+            'is_current': True
+        }
+        
+        db.child("weekly_plans").child(uid).child(week_key).set(plan_data)
+        
+        # Mark other plans as not current
+        all_plans = db.child("weekly_plans").child(uid).get().val()
+        if all_plans:
+            for plan_key in all_plans.keys():
+                if plan_key != week_key:
+                    db.child("weekly_plans").child(uid).child(plan_key).update({'is_current': False})
+        
+        return True
+    except Exception as e:
+        print(f"Error saving weekly plan: {str(e)}")
+        return False
+
+# ============================================================================
+# ML MODEL FUNCTIONS
+# ============================================================================
+
+def load_diet_model():
+    """Load trained diet plan model"""
+    try:
+        model_path = os.path.join(settings.BASE_DIR, 'diet_plan_model.joblib')
+        if not os.path.exists(model_path):
+            return None
+        return load(model_path)
+    except Exception as e:
+        print(f"Error loading diet model: {str(e)}")
+        return None
 
 def load_workout_model():
-    """Load the trained workout plan model"""
+    """Load trained workout plan model"""
     try:
         model_path = os.path.join(settings.BASE_DIR, 'workout_plan_model.joblib')
         mapping_path = os.path.join(settings.BASE_DIR, 'class_to_plan.json')
         
         if not os.path.exists(model_path) or not os.path.exists(mapping_path):
-            print("Workout model or mapping not found")
             return None, None
         
         model = load(model_path)
         with open(mapping_path, "r") as f:
             class_to_plan = json.load(f)
-        print("Workout model loaded successfully")
         return model, class_to_plan
     except Exception as e:
         print(f"Error loading workout model: {str(e)}")
         return None, None
 
-def get_weekly_averages_for_workout_plan(uid):
-    """
-    Collect weekly averages & workout summary for workout plan model
-    """
-    stats = get_weekly_stats(uid)
-    if not stats:
-        return None
-    
-    # Build workout history text summary for the ML model
-    workout_history = (
-        f"{stats['active_days']} active days last week, "
-        f"avg {stats['avg_workout_duration']} min per workout, "
-        f"sleep avg {stats['avg_sleep']} h, "
-        f"most popular workout: {stats['most_popular_workout']}."
-    )
-    
-    return {
-        "avg_sleep_hours": stats["avg_sleep"],
-        "sleep_quality": stats["avg_sleep_quality"],
-        "avg_calories": stats["avg_calories"],
-        "protein": 100,  # 🔹 if you want, pull actual macros from diet records
-        "carbs": 200,
-        "fat": 70,
-        "water_liters": stats["avg_water"],
-        "goal": get_user_profile_from_firebase(uid).get("goal", "General Fitness"),
-        "workout_history": workout_history
-    }
-
-
-def get_health_records_from_firebase(uid, start_date=None, end_date=None):
-    """Helper function to get health records from Firebase with better error handling"""
-    try:
-        records_ref = db.child("health_records").child(uid)
-        
-        if start_date and end_date:
-            # Get all records first, then filter (Firebase query limitations)
-            all_records = records_ref.get().val()
-            if not all_records:
-                return {}
-            
-            # Filter by date range
-            filtered_records = {}
-            start_str = start_date.strftime('%Y-%m-%d')
-            end_str = end_date.strftime('%Y-%m-%d')
-            
-            for date_key, record_data in all_records.items():
-                if start_str <= date_key <= end_str:
-                    filtered_records[date_key] = record_data
-            
-            print(f"Filtered {len(filtered_records)} records from {len(all_records)} total records")
-            return filtered_records
-        else:
-            records_data = records_ref.get().val()
-            return records_data if records_data else {}
-            
-    except Exception as e:
-        print(f"Error fetching health records: {str(e)}")
-        return {}
-
-def has_record_for_date(uid, check_date):
-    """Check if user has a health record for a specific date with better error handling"""
-    date_str = check_date.strftime('%Y-%m-%d')
-    try:
-        record = db.child("health_records").child(uid).child(date_str).get().val()
-        exists = record is not None
-        print(f"Record exists for {date_str}: {exists}")
-        return exists
-    except Exception as e:
-        print(f"Error checking record for date {date_str}: {str(e)}")
-        return False
-
-def get_weekly_stats(uid):
-    """Calculate comprehensive weekly statistics from Firebase data"""
-    end_date = timezone.now().date()
-    start_date = end_date - timedelta(days=6)
-    
-    records = get_health_records_from_firebase(uid, start_date, end_date)
-    
-    if not records:
-        return None
-    
-    # Initialize totals
-    total_sleep = 0
-    total_sleep_quality = 0
-    total_calories = 0
-    total_water = 0
-    total_workout_duration = 0
-    total_junk_food = 0
-    active_days = 0
-    workout_types = []
-    
-    record_count = len(records)
-    
-    # Process each record
-    for record_data in records.values():
-        # Sleep data
-        sleep_hours = float(record_data.get('sleep_hours', 0))
-        sleep_quality = int(record_data.get('sleep_quality', 0))
-        total_sleep += sleep_hours
-        total_sleep_quality += sleep_quality
-        
-        # Nutrition data
-        calories = int(record_data.get('total_calories', 0))
-        water = float(record_data.get('water_intake', 0))
-        junk_food = int(record_data.get('junk_food_level', 0))
-        total_calories += calories
-        total_water += water
-        total_junk_food += junk_food
-        
-        # Workout data
-        workout_duration = int(record_data.get('workout_duration', 0))
-        total_workout_duration += workout_duration
-        
-        if workout_duration > 0:
-            active_days += 1
-        
-        # Collect workout types
-        record_workout_types = record_data.get('workout_types', [])
-        if isinstance(record_workout_types, str):
-            try:
-                record_workout_types = json.loads(record_workout_types)
-            except:
-                record_workout_types = [record_workout_types] if record_workout_types else []
-        elif not isinstance(record_workout_types, list):
-            record_workout_types = []
-        
-        workout_types.extend(record_workout_types)
-    
-    # Find most popular workout
-    most_popular_workout = 'none'
-    if workout_types:
-        from collections import Counter
-        workout_counts = Counter(workout_types)
-        most_popular_workout = workout_counts.most_common(1)[0][0]
-    
-    return {
-        'avg_sleep': round(total_sleep / record_count, 1) if record_count > 0 else 0,
-        'avg_sleep_quality': round(total_sleep_quality / record_count, 1) if record_count > 0 else 0,
-        'avg_calories': round(total_calories / record_count) if record_count > 0 else 0,
-        'avg_water': round(total_water / record_count, 1) if record_count > 0 else 0,
-        'avg_workout_duration': round(total_workout_duration / record_count) if record_count > 0 else 0,
-        'avg_junk_food': round(total_junk_food / record_count, 1) if record_count > 0 else 0,
-        'total_days': record_count,
-        'active_days': active_days,
-        'most_popular_workout': most_popular_workout
-    }
-
-def get_current_streak(uid):
-    """Calculate current streak from Firebase data with proper logic"""
-    try:
-        # Get all health records for the user
-        records = db.child("health_records").child(uid).get().val()
-        if not records:
-            print(f"No records found for user {uid}")
-            return 0
-        
-        # Convert record dates to date objects and sort them
-        record_dates = []
-        for date_str in records.keys():
-            try:
-                record_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-                record_dates.append(record_date)
-            except ValueError:
-                print(f"Invalid date format: {date_str}")
-                continue
-        
-        if not record_dates:
-            print("No valid dates found in records")
-            return 0
-        
-        # Sort dates in descending order (most recent first)
-        record_dates.sort(reverse=True)
-        
-        print(f"Found {len(record_dates)} valid record dates for user {uid}")
-        print(f"Most recent dates: {record_dates[:5]}")  # Show first 5 dates
-        
-        # Get today's date
-        today = timezone.now().date()
-        streak = 0
-        
-        # Check if there's a record for today or yesterday to start the streak
-        most_recent_date = record_dates[0]
-        
-        # Calculate days difference from today
-        days_diff = (today - most_recent_date).days
-        
-        print(f"Today: {today}, Most recent record: {most_recent_date}, Days diff: {days_diff}")
-        
-        # If the most recent record is more than 1 day old, streak is 0
-        if days_diff > 1:
-            print(f"Most recent record is {days_diff} days old, streak broken")
-            return 0
-        
-        # Start checking for consecutive days
-        expected_date = most_recent_date
-        
-        for record_date in record_dates:
-            if record_date == expected_date:
-                streak += 1
-                expected_date = record_date - timedelta(days=1)
-                print(f"Streak day {streak}: {record_date}, next expected: {expected_date}")
-            else:
-                # Gap found, break the streak
-                print(f"Gap found: expected {expected_date}, found {record_date}")
-                break
-        
-        print(f"Final streak for user {uid}: {streak}")
-        return streak
-        
-    except Exception as e:
-        print(f"Error calculating streak for user {uid}: {str(e)}")
-        import traceback
-        print(traceback.format_exc())
-        return 0
-    
-
-def get_streak_with_grace_period(uid):
-    """
-    Alternative streak calculation with a grace period
-    Allows for 1 day gap without breaking the streak
-    """
-    try:
-        records = db.child("health_records").child(uid).get().val()
-        if not records:
-            return 0
-        
-        # Get all record dates
-        record_dates = []
-        for date_str in records.keys():
-            try:
-                record_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-                record_dates.append(record_date)
-            except ValueError:
-                continue
-        
-        if not record_dates:
-            return 0
-        
-        # Sort dates in descending order
-        record_dates.sort(reverse=True)
-        today = timezone.now().date()
-        
-        # Check if we should start counting from today or yesterday
-        start_date = today
-        if today not in record_dates:
-            if (today - timedelta(days=1)) in record_dates:
-                start_date = today - timedelta(days=1)
-            else:
-                return 0
-        
-        streak = 0
-        current_date = start_date
-        grace_used = False
-        
-        while True:
-            if current_date in record_dates:
-                streak += 1
-                current_date -= timedelta(days=1)
-                grace_used = False  # Reset grace period
-            else:
-                if not grace_used:
-                    # Use grace period (allow 1 day gap)
-                    grace_used = True
-                    current_date -= timedelta(days=1)
-                else:
-                    # No more grace, break streak
-                    break
-        
-        return streak
-        
-    except Exception as e:
-        print(f"Error in grace period streak calculation: {str(e)}")
-        return 0
-    
-def get_simple_streak(uid):
-    """
-    Simple streak calculation - counts consecutive days from most recent record
-    """
-    try:
-        records = db.child("health_records").child(uid).get().val()
-        if not records:
-            return 0
-        
-        # Get all dates and sort them
-        dates = []
-        for date_str in records.keys():
-            try:
-                date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
-                dates.append(date_obj)
-            except ValueError:
-                continue
-        
-        if not dates:
-            return 0
-        
-        dates.sort(reverse=True)  # Most recent first
-        today = timezone.now().date()
-        
-        # Start from the most recent record
-        streak = 0
-        current_date = dates[0]
-        
-        # If the most recent record is today or yesterday, start counting
-        if (today - current_date).days <= 1:
-            for i, date in enumerate(dates):
-                if i == 0:
-                    streak = 1
-                    continue
-                
-                # Check if this date is consecutive to the previous one
-                prev_date = dates[i-1]
-                if (prev_date - date).days == 1:
-                    streak += 1
-                else:
-                    break
-        
-        return streak
-        
-    except Exception as e:
-        print(f"Error in simple streak calculation: {str(e)}")
-        return 0
-
-def get_total_records_count(uid):
-    """Get total number of health records for user"""
-    try:
-        records = db.child("health_records").child(uid).get().val()
-        return len(records) if records else 0
-    except:
-        return 0
-
-def load_diet_model():
-    """Load the trained diet plan model"""
-    try:
-        model_path = os.path.join(settings.BASE_DIR, 'diet_plan_model.joblib')
-        if not os.path.exists(model_path):
-            print(f"Model file not found at {model_path}")
-            return None
-        model = load(model_path)
-        print("Diet plan model loaded successfully")
-        return model
-    except Exception as e:
-        print(f"Error loading diet plan model: {str(e)}")
-        return None
-
-def clamp(v, vmin, vmax):
-    """Helper function to clamp values between min and max"""
-    return max(vmin, min(v, vmax))
-
-def generate_personalized_plan(week_sleep, avg_cal, protein, carbs, water_l, goal, plan_style):
-    """
-    Convert model output (plan_style) + current weekly stats into numeric targets & readable text.
-    """
-    # Baseline from user's data
+def generate_personalized_diet(week_sleep, avg_cal, protein, carbs, water_l, goal, plan_style):
+    """Generate personalized diet plan from model output"""
     base_cal = float(avg_cal)
     base_pro = float(protein)
     base_carb = float(carbs)
     base_h2o = float(water_l)
-
-    # Sleep nudges for recovery
+    
     sleep_target = clamp(round(max(7.0, min(9.0, (week_sleep + 7.5) / 2)), 1), 6.5, 9.0)
-
-    # Default targets
-    kcal_target = base_cal
-    pro_target = base_pro
-    carb_target = base_carb
-    h2o_target = max(2.2, min(4.0, base_h2o))
-
-    # Helper functions
-    def g_step(x, low, high): 
-        return int(clamp(x, low, high))
-
-    g = plan_style
-
-    if g == "weight_loss":
-        kcal_target = int(round(base_cal * 0.82))
-        pro_target = g_step(base_pro + 20, 80, 180)
-        carb_target = g_step(base_carb * 0.8, 120, 300)
-        h2o_target = clamp(base_h2o + 0.4, 2.2, 4.0)
-        headline = "Calorie deficit with higher protein"
-        bullets = [
-            f"Calories: ~{kcal_target} kcal/day (≈18% below current average)",
-            f"Protein: {pro_target} g/day to preserve lean mass",
-            f"Carbs: {carb_target} g/day (favor whole grains, veggies)",
-            f"Water: {round(h2o_target,1)} L/day",
-            f"Sleep: {sleep_target} h/night for appetite & recovery",
-        ]
-
-    elif g == "muscle_gain":
-        kcal_target = int(round(base_cal * 1.12))
-        pro_target = g_step(max(base_pro, 110), 110, 200)
-        carb_target = g_step(max(base_carb, 260), 220, 420)
-        h2o_target = clamp(base_h2o + 0.3, 2.4, 4.0)
-        headline = "Slight surplus with high protein"
-        bullets = [
-            f"Calories: ~{kcal_target} kcal/day (≈12% above current average)",
-            f"Protein: {pro_target} g/day to support hypertrophy",
-            f"Carbs: {carb_target} g/day for training fuel",
-            f"Water: {round(h2o_target,1)} L/day",
-            f"Sleep: {sleep_target} h/night (growth & recovery)",
-        ]
-
-    elif g == "endurance":
-        kcal_target = int(round(clamp(base_cal, 2000, 2700)))
-        pro_target = g_step(clamp(base_pro, 70, 120), 70, 130)
-        carb_target = g_step(clamp(max(base_carb, 280), 280, 460), 260, 480)
-        h2o_target = clamp(base_h2o + 0.5, 2.5, 4.0)
-        headline = "Carb-focused fueling for endurance"
-        bullets = [
-            f"Calories: ~{kcal_target} kcal/day to support volume",
-            f"Protein: {pro_target} g/day for repair",
-            f"Carbs: {carb_target} g/day (prioritize pre/during/post training)",
-            f"Water: {round(h2o_target,1)} L/day (+ electrolytes on long sessions)",
-            f"Sleep: {sleep_target} h/night (key for aerobic adaptations)",
-        ]
-
-    else:  # "general"
-        kcal_target = int(round(base_cal))
-        pro_target = g_step(max(base_pro, 90), 80, 160)
-        carb_target = g_step(clamp(base_carb, 180, 360), 180, 360)
-        h2o_target = clamp(max(base_h2o, 2.4), 2.4, 4.0)
-        headline = "Balanced maintenance"
-        bullets = [
-            f"Calories: ~{kcal_target} kcal/day (maintain)",
-            f"Protein: {pro_target} g/day",
-            f"Carbs: {carb_target} g/day (whole-food sources)",
-            f"Water: {round(h2o_target,1)} L/day",
-            f"Sleep: {sleep_target} h/night",
-        ]
-
-    description = f"{headline}. Focus on consistent meals, whole foods, and weekly check-ins to adjust."
+    
+    # Plan configurations
+    plans = {
+        'weight_loss': {
+            'cal_mult': 0.82, 'pro_add': 20, 'pro_range': (80, 180),
+            'carb_mult': 0.8, 'carb_range': (120, 300), 'h2o_add': 0.4,
+            'headline': 'Calorie deficit with higher protein'
+        },
+        'muscle_gain': {
+            'cal_mult': 1.12, 'pro_min': 110, 'pro_range': (110, 200),
+            'carb_min': 260, 'carb_range': (220, 420), 'h2o_add': 0.3,
+            'headline': 'Slight surplus with high protein'
+        },
+        'endurance': {
+            'cal_range': (2000, 2700), 'pro_range': (70, 130),
+            'carb_min': 280, 'carb_range': (260, 480), 'h2o_add': 0.5,
+            'headline': 'Carb-focused fueling for endurance'
+        },
+        'general': {
+            'cal_mult': 1.0, 'pro_min': 90, 'pro_range': (80, 160),
+            'carb_range': (180, 360), 'h2o_min': 2.4,
+            'headline': 'Balanced maintenance'
+        }
+    }
+    
+    config = plans.get(plan_style, plans['general'])
+    
+    # Calculate targets based on plan type
+    if plan_style == 'weight_loss':
+        kcal = int(base_cal * config['cal_mult'])
+        pro = clamp(base_pro + config['pro_add'], *config['pro_range'])
+        carb = clamp(base_carb * config['carb_mult'], *config['carb_range'])
+        h2o = clamp(base_h2o + config['h2o_add'], 2.2, 4.0)
+    elif plan_style == 'muscle_gain':
+        kcal = int(base_cal * config['cal_mult'])
+        pro = clamp(max(base_pro, config['pro_min']), *config['pro_range'])
+        carb = clamp(max(base_carb, config['carb_min']), *config['carb_range'])
+        h2o = clamp(base_h2o + config['h2o_add'], 2.4, 4.0)
+    elif plan_style == 'endurance':
+        kcal = int(clamp(base_cal, *config['cal_range']))
+        pro = clamp(base_pro, *config['pro_range'])
+        carb = clamp(max(base_carb, config['carb_min']), *config['carb_range'])
+        h2o = clamp(base_h2o + config['h2o_add'], 2.5, 4.0)
+    else:  # general
+        kcal = int(base_cal)
+        pro = clamp(max(base_pro, config['pro_min']), *config['pro_range'])
+        carb = clamp(base_carb, *config['carb_range'])
+        h2o = clamp(max(base_h2o, config.get('h2o_min', 2.4)), 2.4, 4.0)
+    
+    bullets = [
+        f"Calories: ~{kcal} kcal/day",
+        f"Protein: {int(pro)} g/day",
+        f"Carbs: {int(carb)} g/day",
+        f"Water: {round(h2o, 1)} L/day",
+        f"Sleep: {sleep_target} h/night"
+    ]
     
     return {
-        "plan_style": g,
+        "plan_style": plan_style,
         "targets": {
-            "calories_kcal": int(kcal_target),
-            "protein_g": int(pro_target),
-            "carbs_g": int(carb_target),
-            "water_l": float(round(h2o_target, 1)),
-            "sleep_h": float(sleep_target),
+            "calories_kcal": kcal,
+            "protein_g": int(pro),
+            "carbs_g": int(carb),
+            "water_l": round(h2o, 1),
+            "sleep_h": sleep_target
         },
-        "summary": description,
+        "summary": f"{config['headline']}. Focus on consistent meals and whole foods.",
         "bullets": bullets,
-        "headline": headline
+        "headline": config['headline']
     }
 
-def get_weekly_averages_for_diet_plan(uid):
-    """Calculate weekly averages needed for diet plan model"""
-    try:
-        # Get last 7 days of data
-        end_date = timezone.now().date()
-        start_date = end_date - timedelta(days=6)
-        
-        records = get_health_records_from_firebase(uid, start_date, end_date)
-        
-        if not records or len(records) < 3:  # Need at least 3 days of data
-            return None
-        
-        # Calculate averages
-        total_sleep = 0
-        total_calories = 0
-        total_protein = 0
-        total_carbs = 0
-        total_water = 0
-        count = len(records)
-        
-        for record in records.values():
-            total_sleep += float(record.get('sleep_hours', 0))
-            total_calories += int(record.get('total_calories', 0))
-            total_protein += int(record.get('protein', 0))
-            total_carbs += int(record.get('carbs', 0))
-            total_water += float(record.get('water_intake', 0))
-        
-        return {
-            'week_avg_sleep': round(total_sleep / count, 1),
-            'avg_calories': round(total_calories / count),
-            'protein': round(total_protein / count),
-            'carbs': round(total_carbs / count),
-            'water_l': round(total_water / count, 1)
-        }
-        
-    except Exception as e:
-        print(f"Error calculating weekly averages: {str(e)}")
-        return None
-
-def predict_weekly_health_and_fitness(uid):
-    """
-    Predict both weekly diet plan (macros + recommendations)
-    and workout plan (7-day schedule) for the given user.
-    """
-    # --- Load models ---
+def predict_weekly_plans(uid):
+    """Predict both diet and workout plans"""
     diet_model = load_diet_model()
     workout_model, class_to_plan = load_workout_model()
-
+    
     if not diet_model or not workout_model:
         return None
-
-    # --- Weekly stats ---
+    
     weekly_stats = get_weekly_stats(uid)
-    diet_weekly = get_weekly_averages_for_diet_plan(uid)
-    if not weekly_stats or not diet_weekly:
+    if not weekly_stats or weekly_stats['total_days'] < 3:
         return None
-
-    # --- User profile ---
-    user_profile = get_user_profile_from_firebase(uid)
+    
+    user_profile = get_user_profile(uid)
     goal = user_profile.get("goal", "general")
-
-    # ------------------ DIET PLAN ------------------
+    
+    # Diet plan prediction
     diet_df = pd.DataFrame([{
-    "Week Avg Sleep": diet_weekly["week_avg_sleep"],
-    "Avg Calories": diet_weekly["avg_calories"],
-    "Protein": diet_weekly["protein"],
-    "Carbs": diet_weekly["carbs"],
-    "Water (L)": diet_weekly["water_l"],
-    "Goal": goal
-}])
-
-
+        "Week Avg Sleep": weekly_stats["avg_sleep"],
+        "Avg Calories": weekly_stats["avg_calories"],
+        "Protein": 100,  # Default if not tracked
+        "Carbs": 200,
+        "Water (L)": weekly_stats["avg_water"],
+        "Goal": goal
+    }])
+    
     plan_style = diet_model.predict(diet_df)[0]
-    diet_plan = generate_personalized_plan(
-        week_sleep=diet_weekly["week_avg_sleep"],
-        avg_cal=diet_weekly["avg_calories"],
-        protein=diet_weekly["protein"],
-        carbs=diet_weekly["carbs"],
-        water_l=diet_weekly["water_l"],
-        goal=goal,
-        plan_style=plan_style
+    diet_plan = generate_personalized_diet(
+        weekly_stats["avg_sleep"], weekly_stats["avg_calories"],
+        100, 200, weekly_stats["avg_water"], goal, plan_style
     )
-
-    # ------------------ WORKOUT PLAN ------------------
-    workout_input = get_weekly_averages_for_workout_plan(uid)
-    if not workout_input:
-        return None
-
-    workout_df = pd.DataFrame([workout_input])
+    
+    # Workout plan prediction
+    workout_history = (f"{weekly_stats['active_days']} active days, "
+                      f"avg {weekly_stats['avg_workout_duration']} min, "
+                      f"most popular: {weekly_stats['most_popular_workout']}")
+    
+    workout_df = pd.DataFrame([{
+        "avg_sleep_hours": weekly_stats["avg_sleep"],
+        "sleep_quality": weekly_stats["avg_sleep_quality"],
+        "avg_calories": weekly_stats["avg_calories"],
+        "protein": 100,
+        "carbs": 200,
+        "fat": 70,
+        "water_liters": weekly_stats["avg_water"],
+        "goal": goal,
+        "workout_history": workout_history
+    }])
+    
     workout_label = workout_model.predict(workout_df)[0]
     workout_plan = class_to_plan.get(workout_label, {})
-
-    # ------------------ COMBINED OUTPUT ------------------
+    
     return {
         "diet_plan": diet_plan,
         "workout_plan": {
@@ -1087,13 +582,382 @@ def predict_weekly_health_and_fitness(uid):
         }
     }
 
+# ============================================================================
+# CHART DATA PREPARATION
+# ============================================================================
 
+def prepare_chart_data(records_dict, start_date, end_date):
+    """Prepare data for dashboard charts"""
+    date_range = [start_date + timedelta(days=i) for i in range(7)]
+    dates = [d.strftime('%m/%d') for d in date_range]
+    
+    data_arrays = {
+        'sleep_hours': [], 'sleep_quality': [], 'calories': [],
+        'water_intake': [], 'workout_duration': [], 'junk_food_levels': []
+    }
+    
+    for date in date_range:
+        date_str = date.strftime('%Y-%m-%d')
+        if records_dict and date_str in records_dict:
+            record = records_dict[date_str]
+            data_arrays['sleep_hours'].append(safe_float(record.get('sleep_hours', 0)))
+            data_arrays['sleep_quality'].append(safe_int(record.get('sleep_quality', 0)))
+            data_arrays['calories'].append(safe_int(record.get('total_calories', 0)))
+            data_arrays['water_intake'].append(safe_float(record.get('water_intake', 0)))
+            data_arrays['workout_duration'].append(safe_int(record.get('workout_duration', 0)))
+            data_arrays['junk_food_levels'].append(safe_int(record.get('junk_food_level', 0)))
+        else:
+            for key in data_arrays:
+                data_arrays[key].append(None)
+    
+    # Meal distribution from latest record
+    meal_data = [0, 0, 0, 0]
+    if records_dict:
+        latest = records_dict[max(records_dict.keys())]
+        meal_data = [
+            safe_int(latest.get('breakfast_calories', 0)),
+            safe_int(latest.get('lunch_calories', 0)),
+            safe_int(latest.get('dinner_calories', 0)),
+            safe_int(latest.get('snacks_calories', 0))
+        ]
+    
+    # Workout types distribution
+    workout_types_count = {}
+    if records_dict:
+        for record in records_dict.values():
+            types = record.get('workout_types', [])
+            if isinstance(types, str):
+                types = json.loads(types) if types else []
+            for wtype in types:
+                if wtype:
+                    workout_types_count[wtype] = workout_types_count.get(wtype, 0) + 1
+    
+    return {
+        'dates': dates,
+        **data_arrays,
+        'meal_data': meal_data,
+        'meal_labels': ['Breakfast', 'Lunch', 'Dinner', 'Snacks'],
+        'workout_types_count': workout_types_count
+    }
 
-# Views for Diet Plan Feature
+# ============================================================================
+# VIEW FUNCTIONS
+# ============================================================================
 
-# Updated diet plan view
+def login_view(request):
+    """User login"""
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+
+        try:
+            user = auth.sign_in_with_email_and_password(email, password)
+            uid = user['localId']
+            user_data = db.child("users").child(uid).get().val()
+
+            if user_data:
+                request.session['user'] = {
+                    'email': email,
+                    'name': user_data.get('name', ''),
+                    'goal': user_data.get('goal', ''),
+                    'uid': uid
+                }
+                messages.success(request, "Login successful!")
+                return redirect('dashboard')
+            else:
+                messages.error(request, "User profile not found.")
+        except Exception as e:
+            try:
+                error_detail = json.loads(e.args[1])['error']['message']
+            except:
+                error_detail = str(e)
+            messages.error(request, f"Login failed: {error_detail}")
+    
+    return render(request, 'login.html')
+
+def signup_view_with_baseline(request):
+    """User signup with baseline setup"""
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+        goal = request.POST.get('goal')
+
+        if not all([name, email, password, goal]):
+            messages.error(request, "All fields are required.")
+            return render(request, 'signup.html')
+
+        try:
+            user = auth.create_user_with_email_and_password(email, password)
+            uid = user['localId']
+
+            # Store user profile
+            data = {
+                "name": name,
+                "email": email,
+                "goal": goal,
+                "created_at": timezone.now().isoformat()
+            }
+            db.child("users").child(uid).set(data)
+            
+            # Set up baseline targets
+            custom_targets = {}
+            for field, key in [('target_sleep_hours', 'sleep_hours'), 
+                              ('target_calories', 'calories'),
+                              ('target_weekly_workouts', 'active_days'),
+                              ('target_water', 'water_intake')]:
+                value = request.POST.get(field)
+                if value:
+                    custom_targets[key] = float(value) if '.' in value else int(value)
+            
+            save_user_baseline(uid, goal, custom_targets if custom_targets else None)
+
+            messages.success(request, "Registered successfully! Your baseline targets have been set.")
+            return redirect('login')
+        except Exception as e:
+            try:
+                error_detail = json.loads(e.args[1])['error']['message']
+            except:
+                error_detail = str(e)
+            messages.error(request, f"Registration failed: {error_detail}")
+    
+    context = {
+        'baseline_options': {
+            'weight_loss': get_baseline_targets('weight_loss'),
+            'muscle_gain': get_baseline_targets('muscle_gain'),
+            'endurance': get_baseline_targets('endurance'),
+            'general': get_baseline_targets('general')
+        }
+    }
+    return render(request, 'signup.html', context)
+
+def logout_view(request):
+    """User logout"""
+    request.session.flush()
+    messages.success(request, "Logged out successfully!")
+    return redirect('login')
+
+def dashboard_view_with_progress(request):
+    """Main dashboard with progress tracking"""
+    user = request.session.get('user')
+    if not user:
+        messages.warning(request, "Please login to access dashboard.")
+        return redirect('login')
+    
+    uid = user['uid']
+    
+    try:
+        user_profile = get_user_profile(uid)
+        today = timezone.now().date()
+        has_today_record = has_record_for_date(uid, today)
+        weekly_stats = get_weekly_stats(uid)
+        
+        # Chart data
+        start_date, end_date = get_week_dates()
+        recent_records = get_health_records(uid, start_date, end_date)
+        chart_data = prepare_chart_data(recent_records, start_date, end_date)
+
+        # Weekly plan
+        combined_plan = get_current_weekly_plan(uid)
+        
+        print(combined_plan)
+        print(weekly_stats)
+
+        # Progress tracking
+        progress_data = None
+        progress_trend = None
+        
+        if weekly_stats:
+            baseline = get_user_baseline(uid)
+            if baseline:
+                progress_data = calculate_progress_score(weekly_stats, baseline)
+                if progress_data:
+                    save_progress_history(uid, progress_data)
+                    progress_trend = get_progress_trend(uid, weeks=4)
+        
+        # Prepare plan info
+        plan_week_info = None
+        if combined_plan:
+            from django.utils.dateparse import parse_datetime
+            from django.utils.timezone import localtime
+            generated_at = combined_plan.get('generated_at')
+            plan_week_info = {
+                'start_date': combined_plan.get('week_start_date'),
+                'end_date': combined_plan.get('week_end_date'),
+                'generated_at': localtime(parse_datetime(generated_at)).strftime("%Y-%m-%d %H:%M:%S") if generated_at else None
+            }
+        
+        context = {
+            'user': user,
+            'user_profile': user_profile,
+            'has_today_record': has_today_record,
+            'weekly_stats': weekly_stats,
+            'chart_data': json.dumps(chart_data, default=str),
+            'current_streak': get_current_streak(uid),
+            'total_records': len(get_health_records(uid)),
+            'combined_plan': combined_plan,
+            'plan_week_info': plan_week_info,
+            'progress_data': progress_data,
+            'progress_trend': progress_trend,
+            'baseline': get_user_baseline(uid)
+        }
+
+    except Exception as e:
+        print(f"Error in dashboard: {str(e)}")
+        context = {
+            'user': user,
+            'user_profile': {},
+            'has_today_record': False,
+            'weekly_stats': None,
+            'chart_data': json.dumps({}),
+            'current_streak': 0,
+            'total_records': 0
+        }
+        messages.error(request, "Error loading dashboard data.")
+    
+    return render(request, 'dashboard.html', context)
+
+def form_view(request):
+    """Health data input form"""
+    user = request.session.get('user')
+    if not user:
+        messages.warning(request, "Please login to access this page.")
+        return redirect('login')
+    
+    uid = user['uid']
+    today = timezone.now().date()
+    
+    if has_record_for_date(uid, today):
+        messages.info(request, "You have already submitted your health data for today!")
+        return redirect('dashboard')
+    
+    return render(request, 'weekly_health_form.html', {'user': user})
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def submit_health_data(request):
+    """Submit daily health data"""
+    user = request.session.get('user')
+    if not user:
+        return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
+    
+    uid = user['uid']
+    today = timezone.now().date()
+    date_str = today.strftime('%Y-%m-%d')
+    
+    if has_record_for_date(uid, today):
+        return JsonResponse({
+            'success': False, 
+            'error': 'You have already submitted data for today'
+        }, status=400)
+    
+    try:
+        data = json.loads(request.body)
+        
+        # Validate required fields
+        required_fields = {
+            'sleepHours': 'Sleep Hours', 'sleepQuality': 'Sleep Quality',
+            'totalCalories': 'Total Calories', 'waterIntake': 'Water Intake',
+            'junkFood': 'Junk Food Level', 'workoutDuration': 'Workout Duration',
+            'workoutIntensity': 'Workout Intensity'
+        }
+        
+        missing = [label for field, label in required_fields.items() 
+                  if field not in data or data[field] in ['', None]]
+        
+        if missing:
+            return JsonResponse({
+                'success': False,
+                'error': f'Missing required fields: {", ".join(missing)}'
+            }, status=400)
+        
+        # Parse workout types
+        workout_types = data.get('workoutTypes', [])
+        if isinstance(workout_types, str):
+            workout_types = [workout_types] if workout_types else []
+        elif not isinstance(workout_types, list):
+            workout_types = []
+        
+        # Prepare health record
+        health_record_data = {
+            'date': date_str,
+            'created_at': timezone.now().isoformat(),
+            'user_id': uid,
+            
+            # Sleep
+            'sleep_hours': safe_float(data['sleepHours']),
+            'sleep_quality': safe_int(data['sleepQuality']),
+            'bedtime': str(data.get('bedtime', '')),
+            'wake_time': str(data.get('waketime', '')),
+            
+            # Nutrition
+            'total_calories': safe_int(data['totalCalories']),
+            'water_intake': safe_float(data['waterIntake']),
+            'carbs': safe_int(data.get('carbs', 0)),
+            'protein': safe_int(data.get('protein', 0)),
+            'fat': safe_int(data.get('fat', 0)),
+            
+            # Meals
+            'breakfast_calories': safe_int(data.get('breakfast', 0)),
+            'lunch_calories': safe_int(data.get('lunch', 0)),
+            'dinner_calories': safe_int(data.get('dinner', 0)),
+            'snacks_calories': safe_int(data.get('snacks', 0)),
+            
+            'junk_food_level': safe_int(data['junkFood']),
+            
+            # Workout
+            'workout_duration': safe_int(data['workoutDuration']),
+            'workout_intensity': str(data['workoutIntensity']),
+            'workout_types': workout_types,
+            'calories_burned': safe_int(data.get('caloriesBurned', 0)),
+        }
+        
+        # Validation
+        validations = [
+            (0 <= health_record_data['sleep_hours'] <= 24, 'Sleep hours must be 0-24'),
+            (1 <= health_record_data['sleep_quality'] <= 5, 'Sleep quality must be 1-5'),
+            (health_record_data['total_calories'] >= 0, 'Calories cannot be negative'),
+            (health_record_data['water_intake'] >= 0, 'Water intake cannot be negative'),
+            (0 <= health_record_data['junk_food_level'] <= 4, 'Junk food level must be 0-4'),
+            (health_record_data['workout_duration'] >= 0, 'Workout duration cannot be negative'),
+            (health_record_data['workout_intensity'] in ['low', 'medium', 'high'], 'Invalid workout intensity')
+        ]
+        
+        for condition, error_msg in validations:
+            if not condition:
+                return JsonResponse({'success': False, 'error': error_msg}, status=400)
+        
+        # Save to Firebase
+        db.child("health_records").child(uid).child(date_str).set(health_record_data)
+        
+        # Verify save
+        if not db.child("health_records").child(uid).child(date_str).get().val():
+            raise Exception("Data was not saved to Firebase")
+        
+        return JsonResponse({
+            'success': True, 
+            'message': 'Health data saved successfully!',
+            'record_date': date_str,
+            'data_summary': {
+                'sleep_hours': health_record_data['sleep_hours'],
+                'total_calories': health_record_data['total_calories'],
+                'workout_duration': health_record_data['workout_duration']
+            }
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        print(f"Error submitting health data: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return JsonResponse({
+            'success': False, 
+            'error': f'An error occurred: {str(e)}'
+        }, status=500)
+
 def diet_plan_view_updated(request):
-    """View to display saved weekly diet plan"""
+    """Display saved weekly diet plan"""
     user = request.session.get('user')
     if not user:
         messages.warning(request, "Please login to access diet plans.")
@@ -1102,7 +966,6 @@ def diet_plan_view_updated(request):
     uid = user['uid']
     
     try:
-        # Get saved weekly plan
         weekly_plan = get_current_weekly_plan(uid)
         weekly_stats = get_weekly_stats(uid)
         
@@ -1113,7 +976,7 @@ def diet_plan_view_updated(request):
         context = {
             'user': user,
             'diet_plan': weekly_plan.get('diet_plan'),
-            'weekly_stats' :weekly_stats,
+            'weekly_stats': weekly_stats,
             'plan_info': {
                 'week_start': weekly_plan.get('week_start_date'),
                 'week_end': weekly_plan.get('week_end_date'),
@@ -1121,20 +984,16 @@ def diet_plan_view_updated(request):
             },
             'current_streak': get_current_streak(uid),
         }
-
-        
         
         return render(request, 'diet_plan.html', context)
         
     except Exception as e:
         print(f"Error in diet_plan_view: {str(e)}")
-        messages.error(request, "Error loading diet plan. Please try again.")
+        messages.error(request, "Error loading diet plan.")
         return redirect('dashboard')
 
-
-# Updated workout plan view
 def workout_plan_view_updated(request):
-    """View to display saved weekly workout plan"""
+    """Display saved weekly workout plan"""
     user = request.session.get('user')
     if not user:
         return redirect('login')
@@ -1142,7 +1001,6 @@ def workout_plan_view_updated(request):
     uid = user['uid']
     
     try:
-        # Get saved weekly plan
         weekly_plan = get_current_weekly_plan(uid)
         
         if not weekly_plan:
@@ -1163,545 +1021,5 @@ def workout_plan_view_updated(request):
         
     except Exception as e:
         print(f"Error in workout_plan_view: {str(e)}")
-        messages.error(request, "Error loading workout plan. Please try again.")
+        messages.error(request, "Error loading workout plan.")
         return redirect('dashboard')
-
-
-# API endpoint to manually trigger plan generation (admin use)
-@csrf_exempt
-def generate_plans_manually(request):
-    """Manual trigger for plan generation (for testing/admin)"""
-    if request.method == 'POST':
-        try:
-            generate_all_weekly_plans()
-            return JsonResponse({'success': True, 'message': 'Weekly plans generated successfully'})
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-    
-    return JsonResponse({'success': False, 'error': 'Method not allowed'})
-
-# Updated dashboard view to use saved plans
-def dashboard_view_with_progress(request):
-    user = request.session.get('user')
-    if not user:
-        messages.warning(request, "Please login to access dashboard.")
-        return redirect('login')
-    
-    uid = user['uid']
-    
-    try:
-        # Get existing data
-        user_profile = get_user_profile_from_firebase(uid)
-        today = timezone.now().date()
-        has_today_record = has_record_for_date(uid, today)
-        weekly_stats = get_weekly_stats(uid)
-        
-        # Get charts data
-        end_date = timezone.now().date()
-        start_date = end_date - timedelta(days=6)
-        recent_records = get_health_records_from_firebase(uid, start_date, end_date)
-        chart_data = prepare_chart_data(recent_records, start_date, end_date)
-
-        # Get saved weekly plan
-        combined_plan = get_current_weekly_plan(uid)
-        
-        # Calculate progress if we have both baseline and weekly stats
-        progress_data = None
-        progress_trend = None
-        
-        if weekly_stats:
-            baseline = get_user_baseline(uid)
-            if baseline:
-                progress_data = calculate_progress_score(weekly_stats, baseline)
-                if progress_data:
-                    # Save this week's progress
-                    save_progress_history(uid, progress_data)
-                    # Get historical trend
-                    progress_trend = get_progress_trend(uid, weeks=4)
-        
-        context = {
-            'user': user,
-            'user_profile': user_profile,
-            'has_today_record': has_today_record,
-            'weekly_stats': weekly_stats,
-            'chart_data': json.dumps(chart_data, default=str),
-            'current_streak': get_current_streak(uid),
-            'total_records': get_total_records_count(uid),
-            'combined_plan': combined_plan,
-            'plan_week_info': {
-                'start_date': combined_plan.get('week_start_date') if combined_plan else None,
-                'end_date': combined_plan.get('week_end_date') if combined_plan else None,
-                'generated_at': localtime(parse_datetime(combined_plan.get('generated_at'))).strftime("%Y-%m-%d %H:%M:%S") if combined_plan else None
-            },
-            'progress_data': progress_data,
-            'progress_trend': progress_trend,
-            'baseline': get_user_baseline(uid)
-        }
-
-    except Exception as e:
-        print(f"Error in dashboard_view_with_progress: {str(e)}")
-        context = {
-            'user': user,
-            'user_profile': {},
-            'has_today_record': False,
-            'weekly_stats': None,
-            'chart_data': json.dumps({}),
-            'current_streak': 0,
-            'total_records': 0,
-            'combined_plan': None,
-            'plan_week_info': None,
-            'progress_data': None,
-            'progress_trend': None,
-            'baseline': None
-        }
-        messages.error(request, "Error loading dashboard data. Please try again.")
-    
-    return render(request, 'dashboard.html', context)
-
-@csrf_exempt
-def update_baseline(request):
-    """API endpoint to update user's baseline targets"""
-    user = request.session.get('user')
-    if not user:
-        return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
-    
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            uid = user['uid']
-            
-            # Get current baseline
-            current_baseline = get_user_baseline(uid)
-            if not current_baseline:
-                return JsonResponse({'success': False, 'error': 'No baseline found'}, status=404)
-            
-            # Update targets
-            updated_targets = current_baseline['targets'].copy()
-            
-            # Update with new values if provided
-            if 'sleep_hours' in data:
-                updated_targets['sleep_hours'] = float(data['sleep_hours'])
-            if 'calories' in data:
-                updated_targets['calories'] = int(data['calories'])
-            if 'water_intake' in data:
-                updated_targets['water_intake'] = float(data['water_intake'])
-            if 'active_days' in data:
-                updated_targets['active_days'] = int(data['active_days'])
-            if 'workout_duration' in data:
-                updated_targets['workout_duration'] = int(data['workout_duration'])
-                
-            # Save updated baseline
-            save_user_baseline(uid, current_baseline['goal'], updated_targets)
-            
-            return JsonResponse({'success': True, 'message': 'Baseline updated successfully'})
-            
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)}, status=500)
-    
-    return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
-
-def form_view(request):
-    user = request.session.get('user')
-    if not user:
-        messages.warning(request, "Please login to access this page.")
-        return redirect('login')
-    
-    uid = user['uid']
-    today = timezone.now().date()
-    
-    # Check if user already has a record for today
-    if has_record_for_date(uid, today):
-        messages.info(request, "You have already submitted your health data for today!")
-        return redirect('dashboard')
-    
-    return render(request, 'weekly_health_form.html', {'user': user})
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def submit_health_data(request):
-    user = request.session.get('user')
-    if not user:
-        return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
-    
-    uid = user['uid']
-    today = timezone.now().date()
-    date_str = today.strftime('%Y-%m-%d')
-    
-    # Check if user already has a record for today
-    if has_record_for_date(uid, today):
-        return JsonResponse({
-            'success': False, 
-            'error': 'You have already submitted data for today'
-        }, status=400)
-    
-    try:
-        # Parse JSON data
-        try:
-            data = json.loads(request.body)
-            print(f"Received data for user {uid}: {data}")  # Debug log
-        except json.JSONDecodeError as e:
-            return JsonResponse({
-                'success': False, 
-                'error': 'Invalid JSON data received'
-            }, status=400)
-        
-        # Validate required fields
-        required_fields = {
-            'sleepHours': 'Sleep Hours',
-            'sleepQuality': 'Sleep Quality',
-            'totalCalories': 'Total Calories',
-            'waterIntake': 'Water Intake',
-            'junkFood': 'Junk Food Level',
-            'workoutDuration': 'Workout Duration',
-            'workoutIntensity': 'Workout Intensity'
-        }
-        
-        missing_fields = []
-        for field, label in required_fields.items():
-            if field not in data or data[field] == '' or data[field] is None:
-                missing_fields.append(label)
-        
-        if missing_fields:
-            return JsonResponse({
-                'success': False,
-                'error': f'Missing required fields: {", ".join(missing_fields)}'
-            }, status=400)
-        
-        # Parse and validate workout types
-        workout_types = data.get('workoutTypes', [])
-        if isinstance(workout_types, str):
-            workout_types = [workout_types] if workout_types else []
-        elif not isinstance(workout_types, list):
-            workout_types = []
-        
-        # Helper function to safely convert to int/float
-        def safe_int(value, default=0):
-            try:
-                return int(float(value)) if value not in [None, ''] else default
-            except (ValueError, TypeError):
-                return default
-        
-        def safe_float(value, default=0.0):
-            try:
-                return float(value) if value not in [None, ''] else default
-            except (ValueError, TypeError):
-                return default
-        
-        # Prepare health record data for Firebase with validation
-        try:
-            health_record_data = {
-                'date': date_str,
-                'created_at': timezone.now().isoformat(),
-                'user_id': uid,  # Add user reference
-                
-                # Sleep data
-                'sleep_hours': safe_float(data['sleepHours']),
-                'sleep_quality': safe_int(data['sleepQuality']),
-                'bedtime': str(data.get('bedtime', '')),
-                'wake_time': str(data.get('waketime', '')),
-                
-                # Nutrition data
-                'total_calories': safe_int(data['totalCalories']),
-                'water_intake': safe_float(data['waterIntake']),
-                'carbs': safe_int(data.get('carbs', 0)),
-                'protein': safe_int(data.get('protein', 0)),
-                'fat': safe_int(data.get('fat', 0)),
-                
-                # Meal breakdown
-                'breakfast_calories': safe_int(data.get('breakfast', 0)),
-                'lunch_calories': safe_int(data.get('lunch', 0)),
-                'dinner_calories': safe_int(data.get('dinner', 0)),
-                'snacks_calories': safe_int(data.get('snacks', 0)),
-                
-                'junk_food_level': safe_int(data['junkFood']),
-                
-                # Workout data
-                'workout_duration': safe_int(data['workoutDuration']),
-                'workout_intensity': str(data['workoutIntensity']),
-                'workout_types': workout_types,
-                'calories_burned': safe_int(data.get('caloriesBurned', 0)),
-            }
-            
-            # Additional validation
-            if health_record_data['sleep_hours'] < 0 or health_record_data['sleep_hours'] > 24:
-                return JsonResponse({
-                    'success': False,
-                    'error': 'Sleep hours must be between 0 and 24'
-                }, status=400)
-            
-            if health_record_data['sleep_quality'] < 1 or health_record_data['sleep_quality'] > 5:
-                return JsonResponse({
-                    'success': False,
-                    'error': 'Sleep quality must be between 1 and 5'
-                }, status=400)
-            
-            if health_record_data['total_calories'] < 0:
-                return JsonResponse({
-                    'success': False,
-                    'error': 'Total calories cannot be negative'
-                }, status=400)
-            
-            if health_record_data['water_intake'] < 0:
-                return JsonResponse({
-                    'success': False,
-                    'error': 'Water intake cannot be negative'
-                }, status=400)
-            
-            if health_record_data['junk_food_level'] < 0 or health_record_data['junk_food_level'] > 4:
-                return JsonResponse({
-                    'success': False,
-                    'error': 'Junk food level must be between 0 and 4'
-                }, status=400)
-            
-            if health_record_data['workout_duration'] < 0:
-                return JsonResponse({
-                    'success': False,
-                    'error': 'Workout duration cannot be negative'
-                }, status=400)
-            
-            if health_record_data['workout_intensity'] not in ['low', 'medium', 'high']:
-                return JsonResponse({
-                    'success': False,
-                    'error': 'Invalid workout intensity level'
-                }, status=400)
-            
-            print(f"Prepared health record data: {health_record_data}")  # Debug log
-            
-        except Exception as e:
-            print(f"Error preparing health record data: {str(e)}")
-            return JsonResponse({
-                'success': False,
-                'error': f'Error processing health data: {str(e)}'
-            }, status=400)
-        
-        # Store in Firebase Realtime Database
-        try:
-            db.child("health_records").child(uid).child(date_str).set(health_record_data)
-            print(f"Successfully saved health record for user {uid} on {date_str}")  # Debug log
-            
-            # Verify the data was saved
-            saved_data = db.child("health_records").child(uid).child(date_str).get().val()
-            if not saved_data:
-                raise Exception("Data was not saved to Firebase")
-                
-        except Exception as e:
-            print(f"Firebase error: {str(e)}")
-            return JsonResponse({
-                'success': False,
-                'error': f'Failed to save to database: {str(e)}'
-            }, status=500)
-        
-        return JsonResponse({
-            'success': True, 
-            'message': 'Health data saved successfully!',
-            'record_date': date_str,
-            'data_summary': {
-                'sleep_hours': health_record_data['sleep_hours'],
-                'total_calories': health_record_data['total_calories'],
-                'workout_duration': health_record_data['workout_duration'],
-                'workout_types': len(workout_types)
-            }
-        })
-        
-    except Exception as e:
-        print(f"Unexpected error in submit_health_data: {str(e)}")
-        import traceback
-        print(traceback.format_exc())  # Print full traceback for debugging
-        
-        return JsonResponse({
-            'success': False, 
-            'error': f'An unexpected error occurred: {str(e)}'
-        }, status=500)
-
-def get_dashboard_data(request):
-    """API endpoint to get dashboard data for AJAX updates"""
-    user = request.session.get('user')
-    if not user:
-        return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
-    
-    uid = user['uid']
-    
-    try:
-        weekly_stats = get_weekly_stats(uid)
-        
-        # Get recent records for charts
-        end_date = timezone.now().date()
-        start_date = end_date - timedelta(days=6)
-        
-        recent_records = get_health_records_from_firebase(uid, start_date, end_date)
-        
-        chart_data = prepare_chart_data(recent_records, start_date, end_date)
-        
-        return JsonResponse({
-            'success': True,
-            'weekly_stats': weekly_stats,
-            'chart_data': chart_data,
-            'current_streak': get_current_streak(uid),
-            'has_today_record': has_record_for_date(uid, timezone.now().date())
-        })
-        
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-def prepare_chart_data(records_dict, start_date, end_date):
-    """Prepare data for dashboard charts from Firebase records"""
-    
-    # Create a dictionary with all dates in range
-    date_range = []
-    current_date = start_date
-    while current_date <= end_date:
-        date_range.append(current_date)
-        current_date += timedelta(days=1)
-    
-    # Prepare data arrays
-    dates = [d.strftime('%m/%d') for d in date_range]  # MM/DD format
-    sleep_hours = []
-    sleep_quality = []
-    calories = []
-    water_intake = []
-    workout_duration = []
-    junk_food_levels = []
-    
-    print(f"Processing chart data for date range: {start_date} to {end_date}")
-    print(f"Available records: {list(records_dict.keys()) if records_dict else 'None'}")
-    
-    for date in date_range:
-        date_str = date.strftime('%Y-%m-%d')
-        if records_dict and date_str in records_dict:
-            record = records_dict[date_str]
-            print(f"Processing record for {date_str}: {record}")
-            
-            sleep_hours.append(float(record.get('sleep_hours', 0)))
-            sleep_quality.append(int(record.get('sleep_quality', 0)))
-            calories.append(int(record.get('total_calories', 0)))
-            water_intake.append(float(record.get('water_intake', 0)))
-            workout_duration.append(int(record.get('workout_duration', 0)))
-            junk_food_levels.append(int(record.get('junk_food_level', 0)))
-        else:
-            # No data for this date
-            sleep_hours.append(None)  # Use null instead of 0 for better chart display
-            sleep_quality.append(None)
-            calories.append(None)
-            water_intake.append(None)
-            workout_duration.append(None)
-            junk_food_levels.append(None)
-    
-    # Get meal distribution from latest record
-    meal_data = [0, 0, 0, 0]  # Default values
-    meal_labels = ['Breakfast', 'Lunch', 'Dinner', 'Snacks']
-    
-    if records_dict:
-        # Get the most recent record
-        sorted_dates = sorted(records_dict.keys(), reverse=True)
-        if sorted_dates:
-            latest_record = records_dict[sorted_dates[0]]
-            meal_data = [
-                int(latest_record.get('breakfast_calories', 0)),
-                int(latest_record.get('lunch_calories', 0)),
-                int(latest_record.get('dinner_calories', 0)),
-                int(latest_record.get('snacks_calories', 0))
-            ]
-    
-    # Get workout types distribution
-    workout_types_count = {}
-    if records_dict:
-        for record in records_dict.values():
-            workout_types = record.get('workout_types', [])
-            if isinstance(workout_types, str):
-                try:
-                    workout_types = json.loads(workout_types)
-                except:
-                    workout_types = [workout_types] if workout_types else []
-            
-            for workout_type in workout_types:
-                if workout_type:  # Only count non-empty workout types
-                    workout_types_count[workout_type] = workout_types_count.get(workout_type, 0) + 1
-    
-    chart_data = {
-        'dates': dates,
-        'sleep_hours': sleep_hours,
-        'sleep_quality': sleep_quality,
-        'calories': calories,
-        'water_intake': water_intake,
-        'workout_duration': workout_duration,
-        'junk_food_levels': junk_food_levels,
-        'meal_data': meal_data,
-        'meal_labels': meal_labels,
-        'workout_types_count': workout_types_count
-    }
-    
-    print(f"Final chart data: {chart_data}")
-    return chart_data
-
-def signup_view_with_baseline(request):
-    if request.method == 'POST':
-        name = request.POST.get('name')
-        email = request.POST.get('email')
-        password = request.POST.get('password')
-        goal = request.POST.get('goal')
-        
-        # Get custom baseline targets if provided
-        custom_sleep = request.POST.get('target_sleep_hours')
-        custom_calories = request.POST.get('target_calories')
-        custom_workouts = request.POST.get('target_weekly_workouts')
-        custom_water = request.POST.get('target_water')
-
-        # Basic validation
-        if not all([name, email, password, goal]):
-            messages.error(request, "All fields are required.")
-            return render(request, 'signup.html')
-
-        try:
-            # Register the user
-            user = auth.create_user_with_email_and_password(email, password)
-            uid = user['localId']
-
-            # Store user profile in Realtime DB
-            data = {
-                "name": name,
-                "email": email,
-                "goal": goal,
-                "created_at": timezone.now().isoformat()
-            }
-            db.child("users").child(uid).set(data)
-            
-            # Set up baseline targets
-            custom_targets = {}
-            if custom_sleep:
-                custom_targets['sleep_hours'] = float(custom_sleep)
-            if custom_calories:
-                custom_targets['calories'] = int(custom_calories)
-            if custom_workouts:
-                custom_targets['active_days'] = int(custom_workouts)
-            if custom_water:
-                custom_targets['water_intake'] = float(custom_water)
-            
-            # Save baseline
-            save_user_baseline(uid, goal, custom_targets if custom_targets else None)
-
-            messages.success(request, "Registered successfully! Your baseline targets have been set based on your goal.")
-            return redirect('login')
-        except Exception as e:
-            try:
-                error_detail = json.loads(e.args[1])['error']['message']
-            except (IndexError, KeyError, json.JSONDecodeError):
-                error_detail = str(e)
-            messages.error(request, f"Registration failed: {error_detail}")
-    
-    # Pass baseline options to template
-    context = {
-        'baseline_options': {
-            'weight_loss': get_baseline_targets_by_goal('weight_loss'),
-            'muscle_gain': get_baseline_targets_by_goal('muscle_gain'),
-            'endurance': get_baseline_targets_by_goal('endurance'),
-            'general': get_baseline_targets_by_goal('general')
-        }
-    }
-    return render(request, 'signup.html', context)
-
-
-def logout_view(request):
-    """Logout function to clear session"""
-    request.session.flush()  # This clears all session data
-    messages.success(request, "Logged out successfully!")
-    return redirect('login')

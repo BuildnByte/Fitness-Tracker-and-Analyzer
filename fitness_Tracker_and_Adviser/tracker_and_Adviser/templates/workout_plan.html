@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Workout Plan | FitTrack Pro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: float 30s linear infinite;
+            z-index: 0;
+        }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(-30px, -30px) rotate(360deg); }
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .header h1 {
+            color: #1a1a1a;
+            font-size: 2rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .ai-badge {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .back-btn {
+            background: rgba(240, 147, 251, 0.1);
+            color: #f5576c;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(240, 147, 251, 0.2);
+        }
+
+        .plan-info-banner {
+            background: linear-gradient(135deg, rgba(240, 147, 251, 0.1), rgba(245, 87, 108, 0.1));
+            border-radius: 15px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .plan-dates {
+            display: flex;
+            gap: 2rem;
+            color: #374151;
+            font-size: 0.9rem;
+        }
+
+        .plan-dates strong {
+            color: #f5576c;
+        }
+
+        .plan-overview {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .plan-type {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 25px;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .plan-label {
+            color: #6b7280;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 1.5rem;
+        }
+
+        .weekly-schedule {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .day-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border-left: 4px solid transparent;
+        }
+
+        .day-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .day-card.active {
+            border-left-color: #f5576c;
+            background: rgba(255, 255, 255, 0.95);
+        }
+
+        .day-card.rest {
+            border-left-color: #10b981;
+            background: rgba(255, 255, 255, 0.95);
+        }
+
+        .day-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .day-icon {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: white;
+        }
+
+        .day-card.rest .day-icon {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .day-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+
+        .workout-activity {
+            color: #374151;
+            font-size: 1rem;
+            line-height: 1.6;
+            font-weight: 500;
+        }
+
+        .rest-note {
+            color: #059669;
+            font-style: italic;
+        }
+
+        .tips-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-top: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .tips-section h2 {
+            color: #1a1a1a;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tips-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .tip-card {
+            background: rgba(240, 147, 251, 0.05);
+            border-left: 4px solid #f5576c;
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .tip-card h3 {
+            color: #f5576c;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tip-card p {
+            color: #374151;
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
+        .progress-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-top: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .progress-section h3 {
+            color: #1a1a1a;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .progress-tip {
+            background: linear-gradient(135deg, rgb(252, 231, 243), rgb(255, 255, 255));
+            border: 2px solid rgba(245, 87, 108, 0.2);
+            border-radius: 12px;
+            padding: 1rem;
+            color: #374151;
+            line-height: 1.6;
+        }
+
+        .no-plan-message {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 3rem;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .no-plan-message h2 {
+            color: #374151;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .no-plan-message p {
+            color: #6b7280;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .weekly-schedule {
+                grid-template-columns: 1fr;
+            }
+
+            .tips-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .header h1 {
+                font-size: 1.5rem;
+                flex-direction: column;
+            }
+
+            .plan-dates {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>
+                    💪 AI Workout Plan
+                    <span class="ai-badge">🤖 AI Powered</span>
+                </h1>
+            </div>
+            <a href="{% url 'dashboard' %}" class="back-btn">← Back to Dashboard</a>
+        </div>
+
+        {% if workout_plan %}
+            
+
+            <div class="plan-overview">
+                <div class="plan-type">
+                    <span>🏋️</span>
+                    <span>{{ workout_plan.predicted_label }}</span>
+                </div>
+                
+                <p class="plan-label">Your personalized 7-day workout schedule based on AI analysis of your fitness patterns</p>
+            </div>
+
+            <div class="weekly-schedule">
+                {% for day, activity in workout_plan.weekly_schedule.items %}
+                    <div class="day-card {% if activity == 'Rest' %}rest{% endif %} {% if day == current_day %}active{% endif %}">
+                        <div class="day-header">
+                            <div class="day-icon">
+                                {% if activity == 'Rest' %}
+                                    🛌
+                                {% elif 'Cardio' in activity or 'cardio' in activity %}
+                                    🏃
+                                {% elif 'Strength' in activity or 'strength' in activity %}
+                                    🏋️
+                                {% elif 'Yoga' in activity or 'yoga' in activity %}
+                                    🧘
+                                {% elif 'Outdoor' in activity or 'outdoor' in activity %}
+                                    🚴
+                                {% else %}
+                                    💪
+                                {% endif %}
+                            </div>
+                            <div class="day-name">{{ day }}</div>
+                        </div>
+                        <div class="workout-activity {% if activity == 'Rest' %}rest-note{% endif %}">
+                            {{ activity }}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div class="tips-section">
+                <h2>💡 Workout Tips & Guidelines</h2>
+                <div class="tips-grid">
+                    <div class="tip-card">
+                        <h3>🔥 Warm-Up</h3>
+                        <p>Always start with 5-10 minutes of light cardio and dynamic stretching to prepare your body and reduce injury risk.</p>
+                    </div>
+                    
+                    <div class="tip-card">
+                        <h3>💧 Stay Hydrated</h3>
+                        <p>Drink water before, during, and after your workout. Aim for at least 500ml extra on workout days.</p>
+                    </div>
+                    
+                    <div class="tip-card">
+                        <h3>⏱️ Progressive Overload</h3>
+                        <p>Gradually increase intensity, duration, or weight each week to continue seeing improvements and avoid plateaus.</p>
+                    </div>
+                    
+                    <div class="tip-card">
+                        <h3>😴 Recovery Matters</h3>
+                        <p>Rest days are crucial for muscle recovery and growth. Listen to your body and don't skip rest days.</p>
+                    </div>
+                    
+                    <div class="tip-card">
+                        <h3>🎯 Proper Form</h3>
+                        <p>Focus on correct technique over heavy weights or speed. Poor form leads to injuries and ineffective workouts.</p>
+                    </div>
+                    
+                    <div class="tip-card">
+                        <h3>🍎 Post-Workout Nutrition</h3>
+                        <p>Eat protein and carbs within 30-60 minutes after training to optimize recovery and muscle building.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="progress-section">
+                <h3>📈 Track Your Workouts</h3>
+                <div class="progress-tip">
+                    <strong>💡 Pro Tip:</strong> Log each workout session in your daily health tracker. The AI will analyze your consistency, 
+                    workout types, and intensity to adjust future plans. Stay consistent, and you'll see the plan evolve with your fitness level!
+                </div>
+            </div>
+
+        {% else %}
+            <div class="no-plan-message">
+                <h2>🤖 AI Workout Plan Not Available</h2>
+                <p>
+                    We need at least 3 days of workout data to generate your personalized AI workout plan. 
+                    Keep tracking your daily fitness activities and come back once you have enough data!
+                </p>
+                <a href="{% url 'dashboard' %}" class="refresh-btn">
+                    📝 Continue Tracking
+                </a>
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        // Get current day of week
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const today = days[new Date().getDay()];
+        
+        // Highlight current day
+        document.querySelectorAll('.day-card').forEach(card => {
+            const dayName = card.querySelector('.day-name').textContent.trim();
+            if (dayName === today) {
+                card.classList.add('active');
+            }
+        });
+
+        // Add animation on load
+        document.querySelectorAll('.day-card').forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            
+            setTimeout(() => {
+                card.style.transition = 'all 0.5s ease';
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, index * 100);
+        });
+
+        // Interactive hover effects
+        document.querySelectorAll('.day-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-8px) scale(1.02)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+
+        {% if workout_plan %}
+            console.log('Workout plan generated successfully:', {
+                plan_type: '{{ workout_plan.predicted_label }}',
+                schedule: {{ workout_plan.weekly_schedule|safe }}
+            });
+        {% endif %}
+    </script>
+</body>
+</html>
