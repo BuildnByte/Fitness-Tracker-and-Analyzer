@@ -34,12 +34,25 @@ firebase = pyrebase.initialize_app(firebase_config)
 auth = firebase.auth()
 db = firebase.database()
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-firebase_file_path = os.path.join(BASE_DIR, 'firebase_config.json')
+firebase_json_str = os.environ.get('FIREBASE_SERVICE_ACCOUNT_JSON')
 
+# Check if the app is already initialized (CRITICAL for serverless)
 if not firebase_admin._apps:
-    cred = credentials.Certificate(firebase_file_path)
-    firebase_admin.initialize_app(cred)
+    if firebase_json_str:
+        # Parse the JSON string into a dictionary
+        firebase_config = json.loads(firebase_json_str)
+        
+        # Initialize the app using the dictionary, NOT a file path
+        cred = credentials.Certificate(firebase_config)
+        firebase_admin.initialize_app(cred)
+    else:
+        # This part is optional: for local testing
+        # It will use a local file if the env var isn't set
+        try:
+            cred = credentials.Certificate('firebase_config.json') # Assumes file is in root
+            firebase_admin.initialize_app(cred)
+        except FileNotFoundError:
+            print("ERROR: Firebase credentials not found.")
 
 # ============================================================================
 # UTILITY FUNCTIONS
