@@ -283,11 +283,17 @@ def calculate_progress_score(current_stats, baseline_targets):
             return min(100, ratio * 100)
         return max(0, 100 - abs(actual - target) * 20)
     
+    duration_score = 0
+    if current_stats.get('avg_workout_duration', 0) > 0:
+        duration_target = targets.get('workout_duration', 30)
+        duration_actual = current_stats['avg_workout_duration']
+        duration_score = min(100, (duration_actual / duration_target) * 100)
+    
     scores = {
         'sleep': score_metric(current_stats.get('avg_sleep', 0), targets.get('sleep_hours', 7.5)),
         'sleep_quality': score_metric(current_stats.get('avg_sleep_quality', 0), targets.get('sleep_quality', 3.5)),
         'workout_consistency': score_metric(current_stats.get('active_days', 0), targets.get('active_days', 4)),
-        'workout_duration': score_metric(current_stats.get('avg_workout_duration', 0), targets.get('workout_duration', 30)),
+        'workout_duration': duration_score,
         'hydration': score_metric(current_stats.get('avg_water', 0), targets.get('water_intake', 2.5)),
         'diet_quality': score_metric(current_stats.get('avg_junk_food', 0), targets.get('junk_food_level', 2.0), invert=True)
     }
