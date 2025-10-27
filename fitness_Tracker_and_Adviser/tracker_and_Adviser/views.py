@@ -772,7 +772,8 @@ def dashboard_view_with_progress(request):
         weekly_stats = get_weekly_stats(uid)
         
         # Chart data
-        start_date, end_date = get_week_dates()
+        end_date = timezone.now().date()
+        start_date = end_date - timedelta(days=6)
         recent_records = get_health_records(uid, start_date, end_date)
         chart_data = prepare_chart_data(recent_records, start_date, end_date)
 
