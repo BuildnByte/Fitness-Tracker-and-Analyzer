@@ -272,30 +272,71 @@ def calculate_progress_score(current_stats, baseline_targets):
     targets = baseline_targets.get('targets', {})
     
     # Calculate individual scores (0-100)
-    def score_metric(actual, target, tolerance=0.2, invert=False):
-        if actual == 0:
-            return 0
-        ratio = actual / target
-        if invert:  # For metrics where lower is better (junk food)
-            return 100 if actual <= target else max(0, 100 - (actual - target) * 25)
-        # Within tolerance is 100%, penalize deviations
-        if (1 - tolerance) <= ratio <= (1 + tolerance):
-            return min(100, ratio * 100)
-        return max(0, 100 - abs(actual - target) * 20)
+    sleep_score = 0
+    if current_stats.get('avg_sleep', 0) > 0:
+        sleep_target = targets.get('sleep_hours', 7.5)
+        sleep_actual = current_stats['avg_sleep']
+        # Score between 0-100, penalize both over and under sleeping
+        if sleep_actual >= sleep_target * 0.8 and sleep_actual <= sleep_target * 1.2:
+            sleep_score = min(100, (sleep_actual / sleep_target) * 100)
+        else:
+            sleep_score = max(0, 100 - abs(sleep_actual - sleep_target) * 20)
     
+    # Sleep Quality Progress (weight: 15%)
+    sleep_quality_score = 0
+    if current_stats.get('avg_sleep_quality', 0) > 0:
+        quality_target = targets.get('sleep_quality', 3.5)
+        quality_actual = current_stats['avg_sleep_quality']
+        sleep_quality_score = min(100, (quality_actual / quality_target) * 100)
+    
+    # Workout Consistency Progress (weight: 25%)
+    workout_score = 0
+    active_days_target = targets.get('active_days', 4)
+    active_days_actual = current_stats.get('active_days', 0)
+    workout_score = min(100, (active_days_actual / active_days_target) * 100)
+    
+    # Workout Duration Progress (weight: 15%)
     duration_score = 0
     if current_stats.get('avg_workout_duration', 0) > 0:
         duration_target = targets.get('workout_duration', 30)
         duration_actual = current_stats['avg_workout_duration']
         duration_score = min(100, (duration_actual / duration_target) * 100)
     
+    # Hydration Progress (weight: 10%)
+    water_score = 0
+    if current_stats.get('avg_water', 0) > 0:
+        water_target = targets.get('water_intake', 2.5)
+        water_actual = current_stats['avg_water']
+        water_score = min(100, (water_actual / water_target) * 100)
+    
+    # Diet Quality Progress (weight: 15%) - Lower junk food is better
+    diet_score = 0
+    if 'avg_junk_food' in current_stats:
+        junk_target = targets.get('junk_food_level', 2.0)
+        junk_actual = current_stats['avg_junk_food']
+        # Invert score - lower junk food = higher score
+        if junk_actual <= junk_target:
+            diet_score = 100
+        else:
+            diet_score = max(0, 100 - (junk_actual - junk_target) * 25)
+    
+    # Calculate weighted overall score
+    weights = {
+        'sleep': 0.20,
+        'sleep_quality': 0.15,
+        'workout_consistency': 0.25,
+        'workout_duration': 0.15,
+        'hydration': 0.10,
+        'diet_quality': 0.15
+    }
+    
     scores = {
-        'sleep': score_metric(current_stats.get('avg_sleep', 0), targets.get('sleep_hours', 7.5)),
-        'sleep_quality': score_metric(current_stats.get('avg_sleep_quality', 0), targets.get('sleep_quality', 3.5)),
-        'workout_consistency': score_metric(current_stats.get('active_days', 0), targets.get('active_days', 4)),
+        'sleep': sleep_score,
+        'sleep_quality': sleep_quality_score,
+        'workout_consistency': workout_score,
         'workout_duration': duration_score,
-        'hydration': score_metric(current_stats.get('avg_water', 0), targets.get('water_intake', 2.5)),
-        'diet_quality': score_metric(current_stats.get('avg_junk_food', 0), targets.get('junk_food_level', 2.0), invert=True)
+        'hydration': water_score,
+        'diet_quality': diet_score
     }
     
     # Weighted overall score
