@@ -604,13 +604,16 @@
                     <div style="font-size: 2rem;">🔥</div>
                 </div>
                 <div class="header-actions">
+                    <a href="{% url 'weigh_in' %}" class="add-data-btn" style="background: linear-gradient(135deg, #3b82f6, #2563eb); box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);">
+                        ⚖️ Weigh-in
+                    </a>
                     {% if has_today_record %}
                         <span class="add-data-btn disabled" title="You've already submitted data for today">
-                            ✅ Today's Data Submitted
+                            ✅ Today's Data
                         </span>
                     {% else %}
                         <a href="{% url 'form' %}" class="add-data-btn">
-                            📝 Add Today's Data
+                            📝 Add Data
                         </a>
                     {% endif %}
                     <a href="{% url 'logout' %}" class="logout-btn">Logout</a>
@@ -805,6 +808,76 @@
 
             <!-- AI Plans Section -->
             {% if combined_plan %}
+                
+                <!-- NEW SYSTEM CONTEXT SUMMARY -->
+                {% if combined_plan.context %}
+                <div class="card" style="margin-bottom: 2rem;">
+                    <div class="card-header">
+                        <div class="card-icon">🧠</div>
+                        <div class="card-title">AI System Context</div>
+                    </div>
+                    <p style="color: #374151; font-weight: 500; font-size: 1.1rem; margin-bottom: 1rem;">
+                        <strong>Predicted Fitness State:</strong> {{ combined_plan.context.fitness_state }} 
+                        <span class="ai-badge" style="margin-left: 10px;">{{ combined_plan.context.confidence|title }} Confidence</span>
+                    </p>
+                    <p style="color: #6b7280; font-size: 0.95rem; margin-bottom: 1rem;">
+                        {% if combined_plan.context.fitness_state == 'Recovering' %}
+                            You are in a Recovering state, meaning recent physical stress is high or sleep/nutrition are low. Your plans are lighter this week to let your body heal.
+                        {% elif combined_plan.context.fitness_state == 'Overtraining' %}
+                            You are Overtraining. Your training volume is exceeding your body's ability to recover. Activity levels have drastically reduced this week.
+                        {% elif combined_plan.context.fitness_state == 'Plateauing' %}
+                            You are Plateauing. Your body has adapted to your current routine. Your plans introduce some variations or slight calorie modifications to break the plateau.
+                        {% else %}
+                            You are Progressing nicely! Your plan maintains a steady and effective challenge to continue your improvements.
+                        {% endif %}
+                    </p>
+                    
+                    <div style="display: flex; gap: 2rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 200px; background: rgba(16, 185, 129, 0.1); padding: 1rem; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.2);">
+                            <h5 style="color: #065f46; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 700;">Goal Alignment</h5>
+                            <div style="font-size: 1.2rem; font-weight: 800; color: #047857;">{{ combined_plan.context.goal_alignment|title }}</div>
+                            <small style="color: #065f46; font-size: 0.8rem;">Based on your recent weight trends and your stated goal.</small>
+                        </div>
+                    </div>
+
+                    <h5 style="color: #374151; margin-bottom: 1rem; font-size: 1rem;">System Core Scores</h5>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        <!-- Recovery Score -->
+                        <div style="background: rgba(102, 126, 234, 0.05); padding: 1rem; border-radius: 10px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span style="font-size: 0.85rem; font-weight: 600; color: #374151;">Recovery</span>
+                                <span style="font-size: 0.85rem; color: #667eea;">{{ combined_plan.context.fuzzy_scores.recovery_score|floatformat:2 }}</span>
+                            </div>
+                            <div class="progress-indicator"><div class="progress-bar" style="width: calc({{ combined_plan.context.fuzzy_scores.recovery_score }} * 100%);"></div></div>
+                        </div>
+                        <!-- Nutrition Adherence -->
+                        <div style="background: rgba(102, 126, 234, 0.05); padding: 1rem; border-radius: 10px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span style="font-size: 0.85rem; font-weight: 600; color: #374151;">Nutrition</span>
+                                <span style="font-size: 0.85rem; color: #667eea;">{{ combined_plan.context.fuzzy_scores.nutrition_adherence|floatformat:2 }}</span>
+                            </div>
+                            <div class="progress-indicator"><div class="progress-bar" style="width: calc({{ combined_plan.context.fuzzy_scores.nutrition_adherence }} * 100%);"></div></div>
+                        </div>
+                        <!-- Training Load -->
+                        <div style="background: rgba(102, 126, 234, 0.05); padding: 1rem; border-radius: 10px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span style="font-size: 0.85rem; font-weight: 600; color: #374151;">Training Load</span>
+                                <span style="font-size: 0.85rem; color: #667eea;">{{ combined_plan.context.fuzzy_scores.training_load|floatformat:2 }}</span>
+                            </div>
+                            <div class="progress-indicator"><div class="progress-bar" style="width: calc({{ combined_plan.context.fuzzy_scores.training_load }} * 100%);"></div></div>
+                        </div>
+                        <!-- Hydration -->
+                        <div style="background: rgba(102, 126, 234, 0.05); padding: 1rem; border-radius: 10px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span style="font-size: 0.85rem; font-weight: 600; color: #374151;">Hydration</span>
+                                <span style="font-size: 0.85rem; color: #667eea;">{{ combined_plan.context.fuzzy_scores.hydration_score|floatformat:2 }}</span>
+                            </div>
+                            <div class="progress-indicator"><div class="progress-bar" style="width: calc({{ combined_plan.context.fuzzy_scores.hydration_score }} * 100%);"></div></div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
                 <div class="ai-plans-section">
                     <!-- Diet Plan Card -->
                     <div class="plan-card">
@@ -927,11 +1000,11 @@
 {% endif %}
                         
                         <div class="plan-type-badge">
-                            🏋️ {{ combined_plan.workout_plan.predicted_label|title }} Program
+                            🏋️ {{ combined_plan.context.fitness_state|title }} Program
                         </div>
                         
                         <p style="color: #374151; line-height: 1.6; margin-bottom: 1rem; font-size: 0.95rem;">
-                            Personalized workout schedule based on your fitness patterns and goals
+                            Personalized workout schedule: {{ combined_plan.workout_plan.advice }}
                         </p>
                         
                         <div class="plan-overview">

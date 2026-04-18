@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Workout Plan | FitTrack Pro</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+        }
+        .container {
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            color: #1a1a1a; font-size: 2rem; display: flex; align-items: center; gap: 1rem;
+        }
+        .ai-badge {
+            background: linear-gradient(135deg, #667eea, #764ba2); color: white;
+            padding: 0.5rem 1rem; border-radius: 25px; font-size: 0.9rem; font-weight: 600;
+        }
+        .back-btn {
+            background: rgba(102, 126, 234, 0.1); color: #667eea;
+            padding: 0.75rem 1.5rem; border-radius: 12px; text-decoration: none; font-weight: 500;
+        }
+        .plan-overview {
+            background: rgba(255, 255, 255, 0.95); border-radius: 20px;
+            padding: 2rem; margin-bottom: 2rem;
+        }
+        .plan-type {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            background: linear-gradient(135deg, #667eea, #764ba2); color: white;
+            padding: 0.75rem 1.5rem; border-radius: 25px; font-weight: 600; margin-bottom: 1rem;
+        }
+        .schedule-grid {
+            display: grid; grid-template-columns: 1fr; gap: 1rem; margin-top: 1.5rem;
+        }
+        .day-card {
+            background: rgba(102, 126, 234, 0.05); border-left: 4px solid #667eea;
+            border-radius: 8px; padding: 1.5rem; display: flex; justify-content: space-between;
+            align-items: center;
+        }
+        .day-card strong { color: #374151; font-size: 1.1rem; }
+        .day-card span { color: #667eea; font-weight: 600; }
+        .context-box {
+            background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AI Workout Plan<span class="ai-badge">🤖 AI Powered</span></h1>
+            <a href="{% url 'dashboard' %}" class="back-btn">← Back to Dashboard</a>
+        </div>
+
+        {% if workout_plan %}
+            <div class="plan-overview">
+                <div class="plan-type">
+                    <span>🏋️</span>
+                    <span>{{ workout_plan.predicted_label|title }} Program</span>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 1rem 1.5rem; border-radius: 12px; margin-bottom: 1rem; font-weight: 600; font-size: 1.1rem;">
+                    🎯 {{ workout_plan.weekly_focus }}
+                </div>
+                
+                <div style="background: rgba(102, 126, 234, 0.05); border-left: 4px solid #667eea; padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 1rem; color: #374151; line-height: 1.5;">
+                    <strong>Why this plan?</strong> {{ workout_plan.state_rationale }}
+                </div>
+
+                <div style="font-size: 0.95rem; color: #6b7280; margin-bottom: 1rem; font-weight: 500;">
+                    📅 {{ workout_plan.days_breakdown.summary }}
+                </div>
+
+                <!-- NEW SYSTEM CONTEXT SUMMARY -->
+                {% if generation_context or plan_info %}
+                <div class="context-box">
+                    <h4 style="color: #065f46; margin-bottom: 1rem;">🧠 AI Generation Context</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        <div>
+                            <strong style="color: #374151;">Predicted State:</strong> <br>
+                            <span style="color: #667eea; font-weight: 600;">{{ generation_context.fitness_state|default:"Unknown" }}</span>
+                        </div>
+                        <div>
+                            <strong style="color: #374151;">Goal Progress:</strong> <br>
+                            <span style="color: #047857; font-weight: 600;">{{ generation_context.goal_alignment|default:"On Track"|title }}</span>
+                        </div>
+                        <div>
+                            <strong style="color: #374151;">Confidence:</strong> <br>
+                            <span style="color: #6b7280; font-weight: 600;">{{ generation_context.confidence|default:"Medium"|title }}</span>
+                        </div>
+                    </div>
+                    
+                    <h5 style="color: #374151; margin-top: 1.5rem; margin-bottom: 0.5rem; font-size: 0.9rem;">Core Factors</h5>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <span style="background: rgba(102, 126, 234, 0.1); padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem; color: #667eea;">Recovery: {{ generation_context.fuzzy_scores.recovery_score|default:"N/A"|floatformat:2 }}</span>
+                        <span style="background: rgba(102, 126, 234, 0.1); padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem; color: #667eea;">Training Load: {{ generation_context.fuzzy_scores.training_load|default:"N/A"|floatformat:2 }}</span>
+                    </div>
+                </div>
+                {% endif %}
+
+                <h3 style="margin-top: 2rem; color: #1a1a1a;">Weekly Schedule</h3>
+                <div class="schedule-grid">
+                    {% for day in day_names %}
+                        {% for schedule_day, workout in workout_plan.weekly_schedule.items %}
+                            {% if schedule_day == day %}
+                                {% if "Rest Day" in workout %}
+                                <div class="day-card" style="border-left-color: #10b981; background: rgba(16, 185, 129, 0.05);">
+                                    <strong>{{ day|title }}</strong>
+                                    <span style="color: #059669;">{{ workout }}</span>
+                                </div>
+                                {% elif "Active Recovery" in workout or "Recovery:" in workout %}
+                                <div class="day-card" style="border-left-color: #3b82f6; background: rgba(59, 130, 246, 0.05);">
+                                    <strong>{{ day|title }}</strong>
+                                    <span style="color: #2563eb;">{{ workout }}</span>
+                                </div>
+                                {% elif "High" in workout or "push effort" in workout %}
+                                <div class="day-card" style="border-left-color: #e11d48; background: rgba(225, 29, 72, 0.05);">
+                                    <strong>{{ day|title }}</strong>
+                                    <span style="color: #e11d48;">{{ workout }}</span>
+                                </div>
+                                {% else %}
+                                <div class="day-card" style="border-left-color: #667eea; background: rgba(102, 126, 234, 0.05);">
+                                    <strong>{{ day|title }}</strong>
+                                    <span style="color: #667eea;">{{ workout }}</span>
+                                </div>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+                </div>
+            </div>
+        {% else %}
+            <div class="plan-overview" style="text-align: center;">
+                <h2>🤖 AI Workout Plan Not Available</h2>
+                <p style="color: #6b7280; margin-top: 1rem;">We need at least 3 days of health data to generate your personalized AI workout plan.</p>
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>

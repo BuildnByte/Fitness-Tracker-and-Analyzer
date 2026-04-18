@@ -356,14 +356,39 @@
                     {{ diet_plan.summary }}
                 </div>
 
+                <!-- NEW SYSTEM CONTEXT SUMMARY -->
+                {% if generation_context or plan_info %}
+                <div class="data-context" style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2);">
+                    <h4 style="color: #065f46;">🧠 AI Generation Context</h4>
+                    <div style="margin-top: 1rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        <div>
+                            <strong style="color: #374151;">Predicted State:</strong> <br>
+                            <span style="color: #667eea; font-weight: 600;">{{ generation_context.fitness_state|default:"Unknown" }}</span>
+                        </div>
+                        <div>
+                            <strong style="color: #374151;">Goal Progress:</strong> <br>
+                            <span style="color: #047857; font-weight: 600;">{{ generation_context.goal_alignment|default:"On Track"|title }}</span>
+                        </div>
+                        <div>
+                            <strong style="color: #374151;">Confidence:</strong> <br>
+                            <span style="color: #6b7280; font-weight: 600;">{{ generation_context.confidence|default:"Medium"|title }}</span>
+                        </div>
+                    </div>
+                    
+                    <h5 style="color: #374151; margin-top: 1rem; margin-bottom: 0.5rem; font-size: 0.9rem;">Core Factors</h5>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <span style="background: rgba(102, 126, 234, 0.1); padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem; color: #667eea;">Nutrition Score: {{ generation_context.fuzzy_scores.nutrition_adherence|default:"N/A"|floatformat:2 }}</span>
+                        <span style="background: rgba(102, 126, 234, 0.1); padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem; color: #667eea;">Hydration: {{ generation_context.fuzzy_scores.hydration_score|default:"N/A"|floatformat:2 }}</span>
+                    </div>
+                </div>
+                {% endif %}
+
                 <div class="data-context">
                     <h4>📊 Based on your {{ weekly_stats.active_days }}-day average:</h4>
                     <div class="data-summary">
                         <div><strong>Sleep:</strong> {{ weekly_stats.avg_sleep }}h</div>
                         <div><strong>Calories:</strong> {{ weekly_stats.avg_calories|floatformat:0 }}</div>
-                        <div><strong>Protein:</strong> {{ diet_plan.weekly_data.protein }}g</div>
-                        <div><strong>Carbs:</strong> {{ diet_plan.weekly_data.carbs }}g</div>
-                        <div><strong>Water:</strong> {{ diet_plan.weekly_data.water_l }}L</div>
+                        <div><strong>Water:</strong> {{ weekly_stats.avg_water }}L</div>
                     </div>
                 </div>
             </div>

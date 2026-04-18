@@ -12,4 +12,5 @@ urlpatterns = [
     path('api/dashboard-data/', views.get_dashboard_data, name='dashboard_data'),
     path("workout-plan/", views.workout_plan_view_updated, name="workout_plan"),
     path('diet-plan/', views.diet_plan_view_updated, name='diet_plan'),
+    path('weigh-in/', views.weigh_in_view, name='weigh_in'),
 ]

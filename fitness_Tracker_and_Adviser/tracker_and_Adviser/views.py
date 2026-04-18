@@ -1,5 +1,6 @@
 import firebase_admin
 import pandas as pd
+import numpy as np
 from firebase_admin import credentials
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login
@@ -21,6 +22,119 @@ import pytz
 from celery import shared_task  # If using Celery for background tasks
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import localtime
+from .fuzzy_logic import get_fuzzy_scores_for_user
+from .workout_templates import WORKOUT_TEMPLATES, GOAL_NORMALIZATION_MAP
+
+def build_workout_schedule(goal, workout_days, fitness_state, confidence, alignment_signal, fuzzy_scores, has_easy_midweek):
+    # Stage A - Template Selection
+    normalized_goal = GOAL_NORMALIZATION_MAP.get(str(goal).lower().strip().replace(" ", "_"), "general")
+    templates_for_goal = WORKOUT_TEMPLATES.get(normalized_goal, WORKOUT_TEMPLATES["general"])
+    
+    clamped_days = max(3, min(workout_days, 5))
+    template_list = list(templates_for_goal.get(clamped_days, templates_for_goal[4]))
+    
+    # Stage B - Fitness State Modifications
+    state_modifier = ""
+    if fitness_state == 'Progressing':
+        if confidence == 'high': state_modifier = " — progressive overload, push slightly harder than last week."
+        elif confidence == 'medium': state_modifier = " — maintain current load, focus on form."
+    elif fitness_state == 'Recovering':
+        state_modifier = " — reduced intensity, focus on movement quality."
+    elif fitness_state == 'Overtraining':
+        if confidence == 'medium': state_modifier = " — significantly reduced intensity."
+    elif fitness_state == 'Plateauing':
+        state_modifier = " — vary exercise selection to challenge adaptation."
+        
+    schedule = []
+    first_active_index = -1
+    midweek_active_index = -1
+    
+    for i, (day, desc) in enumerate(template_list):
+        if "Rest Day" not in desc:
+            if first_active_index == -1: first_active_index = i
+            if day in ["wednesday", "thursday"]: midweek_active_index = i
+            
+            if fitness_state == 'Overtraining' and confidence == 'high':
+                modified_desc = "Active Recovery: light walking or stretching only."
+            else:
+                modified_desc = desc + state_modifier
+            schedule.append((day, modified_desc))
+        else:
+            schedule.append((day, desc))
+            
+    # Stage C - Easy Midweek Modification
+    if has_easy_midweek:
+        wed_index = 2
+        schedule[wed_index] = ("wednesday", "Active Recovery: mobility work, light stretching, or a short easy walk — your training load this week is high.")
+        
+    # Stage D - Goal Alignment Modification
+    if alignment_signal == "behind" and first_active_index != -1:
+        d, mod_desc = schedule[first_active_index]
+        if "Rest Day" not in mod_desc and "Active Recovery" not in mod_desc:
+            schedule[first_active_index] = (d, mod_desc + " — goal progress is behind target, push effort on this session.")
+    elif alignment_signal == "ahead":
+        # apply to midweek active or any active day
+        idx = midweek_active_index if midweek_active_index != -1 else first_active_index
+        if idx != -1:
+            d, mod_desc = schedule[idx]
+            if "Rest Day" not in mod_desc and "Active Recovery" not in mod_desc:
+                schedule[idx] = (d, mod_desc + " — progress is ahead of target, maintain current effort, do not overtrain.")
+                
+    # Step 3 - Support Fields
+    focus_map = {
+        ('Progressing', 'high'): "Progressive overload week — increase load slightly on all major lifts and runs.",
+        ('Progressing', 'medium'): "Steady progression week — focus on execution and consistent effort.",
+        ('Progressing', 'low'): "Maintenance week — hold current workloads steady.",
+        ('Recovering', 'high'): "Recovery focused week — volume reduced to allow physiological adaptation.",
+        ('Recovering', 'medium'): "Recovery focused week — volume reduced to allow physiological adaptation.",
+        ('Recovering', 'low'): "Recovery focused week — volume reduced to allow physiological adaptation.",
+        ('Overtraining', 'high'): "Deload week — significantly reduced volume and intensity, prioritize sleep and nutrition.",
+        ('Overtraining', 'medium'): "Deload week — significantly reduced volume and intensity, prioritize sleep and nutrition.",
+        ('Overtraining', 'low'): "Deload week — significantly reduced volume and intensity, prioritize sleep and nutrition.",
+        ('Plateauing', 'high'): "Variation week — change exercise selection and rep ranges to break adaptation plateau.",
+        ('Plateauing', 'medium'): "Variation week — change exercise selection and rep ranges to break adaptation plateau.",
+        ('Plateauing', 'low'): "Variation week — change exercise selection and rep ranges to break adaptation plateau."
+    }
+    
+    weekly_focus = focus_map.get((fitness_state, confidence), f"{fitness_state} week — adjust accordingly.")
+    
+    rationale_parts = []
+    if fuzzy_scores.get('recovery_score', 1.0) < 0.4:
+        rationale_parts.append("your recovery score is low indicating insufficient sleep or rest")
+    if fuzzy_scores.get('training_load', 0.0) > 0.8:
+        rationale_parts.append("your training load is high indicating significant weekly volume")
+    if fuzzy_scores.get('nutrition_adherence', 1.0) < 0.4:
+        rationale_parts.append("your nutrition adherence needs improvement")
+    if alignment_signal == "behind":
+        rationale_parts.append("your progress is behind your goal expectation")
+        
+    if rationale_parts:
+        state_rationale = f"We have structured this plan because {' and '.join(rationale_parts)}. Your classified state is {fitness_state}."
+    else:
+        state_rationale = f"Your metrics are well-aligned. The AI has classified your state as {fitness_state} and mapped a schedule optimized for your goal."
+
+    active_days = []
+    rest_days = []
+    schedule_dict = {}
+    for d, desc in schedule:
+        schedule_dict[d] = desc
+        if "Rest Day" in desc or "Active Recovery" in desc or "Recovery:" in desc:
+            rest_days.append(d)
+        else:
+            active_days.append(d)
+            
+    days_breakdown = {
+        "active_days": active_days,
+        "rest_days": rest_days,
+        "summary": f"{len(active_days)} active training days, {len(rest_days)} rest or recovery days"
+    }
+    
+    return {
+        "schedule_dict": schedule_dict,
+        "weekly_focus": weekly_focus,
+        "state_rationale": state_rationale,
+        "days_breakdown": days_breakdown
+    }
 
 def get_week_start_end_dates(target_date=None):
     """Get the start (Monday) and end (Sunday) dates for a given week"""
@@ -43,7 +157,7 @@ def get_next_week_dates():
     
     return next_monday, next_sunday
 
-def save_weekly_plan_to_firebase(uid, week_start_date, diet_plan, workout_plan):
+def save_weekly_plan_to_firebase(uid, week_start_date, diet_plan, workout_plan, plan_context=None):
     """Save the generated weekly plan to Firebase"""
     try:
         week_key = week_start_date.strftime('%Y-%m-%d')  # Use Monday's date as key
@@ -54,8 +168,10 @@ def save_weekly_plan_to_firebase(uid, week_start_date, diet_plan, workout_plan):
             'generated_at': timezone.now().isoformat(),
             'diet_plan': diet_plan,
             'workout_plan': workout_plan,
+            'context': plan_context,
             'is_current': True  # Mark as current plan
         }
+
         
         # Save the plan
         db.child("weekly_plans").child(uid).child(week_key).set(plan_data)
@@ -147,7 +263,8 @@ def generate_weekly_plan_for_user(uid):
             uid, 
             next_monday, 
             combined_plan['diet_plan'], 
-            combined_plan['workout_plan']
+            combined_plan['workout_plan'],
+            combined_plan.get('context')
         )
         
         if success:
@@ -276,24 +393,66 @@ def get_user_profile_from_firebase(uid):
         return {}
     
 
-def load_workout_model():
-    """Load the trained workout plan model"""
+def load_fitness_state_model():
+    """Load the trained ensemble fitness state predictor pipeline"""
     try:
-        model_path = os.path.join(settings.BASE_DIR, 'workout_plan_model.joblib')
-        mapping_path = os.path.join(settings.BASE_DIR, 'class_to_plan.json')
-        
-        if not os.path.exists(model_path) or not os.path.exists(mapping_path):
-            print("Workout model or mapping not found")
-            return None, None
+        model_path = os.path.join(settings.BASE_DIR, 'final_fitness_state_predictor.joblib')
+        if not os.path.exists(model_path):
+            print("Fitness state predictor model not found")
+            return None
         
         model = load(model_path)
-        with open(mapping_path, "r") as f:
-            class_to_plan = json.load(f)
-        print("Workout model loaded successfully")
-        return model, class_to_plan
+        print("Fitness state model loaded successfully")
+        return model
     except Exception as e:
-        print(f"Error loading workout model: {str(e)}")
-        return None, None
+        print(f"Error loading fitness state model: {str(e)}")
+        return None
+
+def compute_goal_alignment(uid, user_goal):
+    """
+    Computes goal alignment signal from the past 3 to 4 weeks of weigh-in entries.
+    Returns: 'ahead', 'on track', or 'behind'
+    """
+    try:
+        weigh_ins = db.child("weigh_ins").child(uid).get().val()
+        if not weigh_ins or len(weigh_ins) <= 1:
+            return "on track"  # Default if less than two records exist
+        
+        # Parse and sort dates
+        records = []
+        for date_str, data in weigh_ins.items():
+            records.append((datetime.strptime(date_str, '%Y-%m-%d').date(), data['weight']))
+        
+        records.sort(key=lambda x: x[0])
+        
+        recent_records = [r for r in records if (timezone.now().date() - r[0]).days <= 28] # Last 4 weeks
+        if len(recent_records) <= 1:
+            return "on track"
+        
+        first_record = recent_records[0]
+        last_record = recent_records[-1]
+        
+        weeks_diff = max(1, (last_record[0] - first_record[0]).days / 7.0)
+        weight_diff = last_record[1] - first_record[1]
+        weekly_rate = weight_diff / weeks_diff
+        
+        if user_goal == 'weight_loss':
+            # expected: -0.3 to -0.7
+            if weekly_rate < -0.7: return "ahead"
+            elif weekly_rate > -0.3: return "behind"
+            else: return "on track"
+        elif user_goal == 'muscle_gain':
+            # expected: 0.15 to 0.3
+            if weekly_rate > 0.3: return "ahead"
+            elif weekly_rate < 0.15: return "behind"
+            else: return "on track"
+        else:
+            # endurance or general: stable (-0.2 to +0.2)
+            if weekly_rate < -0.2 or weekly_rate > 0.2: return "behind"
+            else: return "on track"
+    except Exception as e:
+        print(f"Error calculating goal alignment: {str(e)}")
+        return "on track"
 
 def get_weekly_averages_for_workout_plan(uid):
     """
@@ -625,19 +784,7 @@ def get_total_records_count(uid):
     except:
         return 0
 
-def load_diet_model():
-    """Load the trained diet plan model"""
-    try:
-        model_path = os.path.join(settings.BASE_DIR, 'diet_plan_model.joblib')
-        if not os.path.exists(model_path):
-            print(f"Model file not found at {model_path}")
-            return None
-        model = load(model_path)
-        print("Diet plan model loaded successfully")
-        return model
-    except Exception as e:
-        print(f"Error loading diet plan model: {str(e)}")
-        return None
+
 
 def clamp(v, vmin, vmax):
     """Helper function to clamp values between min and max"""
@@ -781,64 +928,213 @@ def get_weekly_averages_for_diet_plan(uid):
 
 def predict_weekly_health_and_fitness(uid):
     """
-    Predict both weekly diet plan (macros + recommendations)
-    and workout plan (7-day schedule) for the given user.
+    Predict fitness state, diet priorities, and workout plans based on the new ensemble model.
     """
-    # --- Load models ---
-    diet_model = load_diet_model()
-    workout_model, class_to_plan = load_workout_model()
-
-    if not diet_model or not workout_model:
+    model = load_fitness_state_model()
+    if not model:
+        print("Model could not be loaded.")
         return None
 
-    # --- Weekly stats ---
+    # Gather required weekly stats and data
     weekly_stats = get_weekly_stats(uid)
     diet_weekly = get_weekly_averages_for_diet_plan(uid)
     if not weekly_stats or not diet_weekly:
+        print("Insufficient weekly stats or diet data.")
         return None
 
-    # --- User profile ---
+    end_date = timezone.now().date()
+    start_date = end_date - timedelta(days=6)
+    health_records = get_health_records_from_firebase(uid, start_date, end_date)
+
     user_profile = get_user_profile_from_firebase(uid)
     goal = user_profile.get("goal", "general")
+    
+    # 1. Fuzzy scores
+    fuzzy_scores = get_fuzzy_scores_for_user(weekly_stats, diet_weekly, health_records)
+    
+    # Calculate a simple average calorie_balance from the records
+    total_bal = 0
+    bal_count = 0
+    for r in health_records.values():
+        total_bal += float(r.get('calorie_balance', 0))
+        bal_count += 1
+    avg_cal_balance = total_bal / bal_count if bal_count > 0 else 0
 
-    # ------------------ DIET PLAN ------------------
-    diet_df = pd.DataFrame([{
-    "Week Avg Sleep": diet_weekly["week_avg_sleep"],
-    "Avg Calories": diet_weekly["avg_calories"],
-    "Protein": diet_weekly["protein"],
-    "Carbs": diet_weekly["carbs"],
-    "Water (L)": diet_weekly["water_l"],
-    "Goal": goal
-}])
+    # 2. Build feature vector for pipeline
+    df = pd.DataFrame([{
+        'recovery_score': fuzzy_scores["recovery_score"],
+        'nutrition_score': fuzzy_scores["nutrition_adherence"],  # name mapping adjustment
+        'training_load_score': fuzzy_scores["training_load"],   # name mapping
+        'hydration_score': fuzzy_scores["hydration_score"],
+        'bmi': float(user_profile.get('bmi', 24.0)),
+        'age': int(user_profile.get('age', 30)),
+        'calorie_balance': avg_cal_balance,
+        'goal_weight_loss': 1.0 if goal == 'weight_loss' else 0.0,
+        'goal_muscle_gain': 1.0 if goal == 'muscle_gain' else 0.0,
+        'goal_endurance': 1.0 if goal == 'endurance' else 0.0,
+        'goal_general': 1.0 if goal == 'general' else 0.0
+    }])
 
+    # 3. Model Prediction
+    try:
+        prob_vec = model.predict_proba(df)[0]
+        classes_arr = model.classes_
+        
+        # Get highest prob class
+        max_idx = np.argmax(prob_vec)
+        winning_class = str(classes_arr[max_idx])
+        winning_prob = prob_vec[max_idx]
+        
+        # Determine confidence
+        if winning_prob > 0.70:
+            confidence = "high"
+        elif winning_prob >= 0.50:
+            confidence = "medium"
+        else:
+            confidence = "low"
+            
+        prob_dict = {str(c): float(p) for c, p in zip(classes_arr, prob_vec)}
+    except Exception as e:
+        print("Prediction error:", e)
+        winning_class = "Progressing"
+        winning_prob = 1.0
+        confidence = "medium"
+        prob_dict = {winning_class: 1.0}
+        
+    # 4. Computed goal alignment signal
+    alignment_signal = compute_goal_alignment(uid, goal)
+    
+    # 5. Personalization Layer: Diet
+    # TDEE
+    try:
+        age_num = int(user_profile.get('age', 30))
+        weight_num = float(user_profile.get('weight', 70))
+        height_num = float(user_profile.get('height', 170))
+        sex = str(user_profile.get('biological_sex', 'male')).lower()
+        al = user_profile.get('activity_level', 'moderately_active').lower()
+        if sex == 'female':
+            bmr = (10 * weight_num) + (6.25 * height_num) - (5 * age_num) - 161
+        else:
+            bmr = (10 * weight_num) + (6.25 * height_num) - (5 * age_num) + 5
+        multipliers = {'sedentary': 1.2, 'lightly_active': 1.375, 'moderately_active': 1.55, 'very_active': 1.725, 'extra_active': 1.9}
+        tdee = int(bmr * multipliers.get(al, 1.55))
+    except:
+        tdee = 2000
 
-    plan_style = diet_model.predict(diet_df)[0]
-    diet_plan = generate_personalized_plan(
-        week_sleep=diet_weekly["week_avg_sleep"],
-        avg_cal=diet_weekly["avg_calories"],
-        protein=diet_weekly["protein"],
-        carbs=diet_weekly["carbs"],
-        water_l=diet_weekly["water_l"],
-        goal=goal,
-        plan_style=plan_style
+    target_cal = tdee
+    prot_target = weight_num * 1.8 if weight_num else 120
+    headlines = []
+    
+    # Goal adjustments
+    if goal == 'weight_loss': target_cal -= 400
+    elif goal == 'muscle_gain': target_cal += 300
+    elif goal == 'endurance': target_cal += 100
+    
+    # Fitness state adjustment scaled by probability
+    if winning_class == 'Recovering':
+        target_cal += int(200 * prob_dict.get('Recovering', 0))
+        headlines.append("Increased calories prioritizing recovery.")
+    elif winning_class == 'Overtraining':
+        target_cal += int(250 * prob_dict.get('Overtraining', 0))
+        headlines.append("Extra calories added to combat overtraining fatigue.")
+    elif winning_class == 'Plateauing':
+        target_cal -= int(100 * prob_dict.get('Plateauing', 0))
+        headlines.append("Slight reduction in calories to break the plateau.")
+        
+    # Goal alignment modifier
+    if alignment_signal == "behind":
+        if goal == 'weight_loss':
+            target_cal -= 50
+        elif goal == 'muscle_gain':
+            target_cal += 100
+    elif alignment_signal == "ahead":
+        if goal == 'weight_loss':
+            target_cal += 50
+            
+    # Fuzzy score feedback
+    if fuzzy_scores["nutrition_adherence"] < 0.4:
+        headlines.append("Focus on improving diet quality (more whole foods).")
+    if fuzzy_scores["hydration_score"] < 0.4:
+        headlines.append("Increase water consumption significantly.")
+        water_l = 3.5
+    else:
+        water_l = max(2.5, (weight_num * 35) / 1000)
+
+    # Macros
+    # Protein ~1.8g/kg or fixed. Fat ~25%. Carbs rest.
+    prot = int(prot_target)
+    fat = int((target_cal * 0.25) / 9)
+    carbs = int((target_cal - (prot*4) - (fat*9)) / 4)
+    if carbs < 50: carbs = 50
+    
+    diet_plan = {
+        "plan_style": goal,
+        "headline": "Personalized " + goal.replace('_', ' ').title() + " Plan",
+        "targets": {
+            "calories_kcal": int(target_cal),
+            "protein_g": prot,
+            "carbs_g": carbs,
+            "fat_g": fat,
+            "water_l": round(water_l, 1),
+            "sleep_h": 8.0,
+        },
+        "summary": " ".join(headlines) if headlines else "Calibrated maintenance plan based on your recent activity.",
+        "bullets": headlines if headlines else ["Keep up the balanced nutrition.", f"Aim for {prot}g of protein daily."]
+    }
+    
+    # 6. Personalization Layer: Workout
+    # Base days on fitness state
+    workout_days = 4
+    if winning_class == 'Recovering': workout_days = min(4, 4)
+    elif winning_class == 'Overtraining': workout_days = 3
+    elif winning_class == 'Progressing': workout_days = 5
+    elif winning_class == 'Plateauing': workout_days = 5
+    
+    intensity = "Moderate"
+    if winning_class == 'Overtraining':
+        if confidence == 'high': intensity = "Light (Deload)"
+        else: intensity = "Light-Moderate"
+    elif winning_class == 'Progressing' and confidence in ['high', 'medium']:
+        intensity = "High"
+    
+    if alignment_signal == "behind":
+        if intensity == "Moderate": intensity = "Moderate-High"
+        
+    has_easy_midweek = False
+    if fuzzy_scores["training_load"] > 0.8:
+        has_easy_midweek = True
+        
+    workout_schedule_data = build_workout_schedule(
+        goal, workout_days, winning_class, confidence, alignment_signal, fuzzy_scores, has_easy_midweek
     )
+    
+    workout_plan = {
+        "predicted_label": winning_class,
+        "weekly_schedule": workout_schedule_data["schedule_dict"],
+        "days_recommended": workout_days,
+        "intensity_target": intensity,
+        "easy_midweek_required": has_easy_midweek,
+        "advice": f"Aim for {workout_days} active days at {intensity} intensity.",
+        "weekly_focus": workout_schedule_data["weekly_focus"],
+        "state_rationale": workout_schedule_data["state_rationale"],
+        "days_breakdown": workout_schedule_data["days_breakdown"]
+    }
 
-    # ------------------ WORKOUT PLAN ------------------
-    workout_input = get_weekly_averages_for_workout_plan(uid)
-    if not workout_input:
-        return None
-
-    workout_df = pd.DataFrame([workout_input])
-    workout_label = workout_model.predict(workout_df)[0]
-    workout_plan = class_to_plan.get(workout_label, {})
-
-    # ------------------ COMBINED OUTPUT ------------------
+    # Context to save
+    generation_context = {
+        "fitness_state": winning_class,
+        "probability_vector": prob_dict,
+        "fuzzy_scores": fuzzy_scores,
+        "goal_alignment": alignment_signal,
+        "confidence": confidence,
+        "weekly_focus": workout_schedule_data["weekly_focus"],
+        "state_rationale": workout_schedule_data["state_rationale"]
+    }
+    
     return {
         "diet_plan": diet_plan,
-        "workout_plan": {
-            "predicted_label": workout_label,
-            "weekly_schedule": workout_plan
-        }
+        "workout_plan": workout_plan,
+        "context": generation_context
     }
 
 
@@ -867,6 +1163,7 @@ def diet_plan_view_updated(request):
         context = {
             'user': user,
             'diet_plan': weekly_plan.get('diet_plan'),
+            'generation_context': weekly_plan.get('context'),
             'weekly_stats' :weekly_stats,
             'plan_info': {
                 'week_start': weekly_plan.get('week_start_date'),
@@ -906,6 +1203,8 @@ def workout_plan_view_updated(request):
         context = {
             'user': user,
             'workout_plan': weekly_plan.get('workout_plan'),
+            'generation_context': weekly_plan.get('context'),
+            'day_names': ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
             'plan_info': {
                 'week_start': weekly_plan.get('week_start_date'),
                 'week_end': weekly_plan.get('week_end_date'),
@@ -972,7 +1271,7 @@ def dashboard_view_updated(request):
                 if temp_plan:
                     # Save this as current plan
                     current_monday, _ = get_week_start_end_dates()
-                    save_weekly_plan_to_firebase(uid, current_monday, temp_plan['diet_plan'], temp_plan['workout_plan'])
+                    save_weekly_plan_to_firebase(uid, current_monday, temp_plan['diet_plan'], temp_plan['workout_plan'], temp_plan.get('context'))
                     combined_plan = get_current_weekly_plan(uid)
             except Exception as e:
                 print(f"Error generating fallback plan: {str(e)}")
@@ -1099,6 +1398,41 @@ def submit_health_data(request):
             except (ValueError, TypeError):
                 return default
         
+        # Calculate derived TDEE and calorie balance
+        try:
+            user_profile = get_user_profile_from_firebase(uid)
+            age = int(user_profile.get('age', 30))
+            weight = float(user_profile.get('weight', 70))
+            height = float(user_profile.get('height', 170))
+            bio_sex = user_profile.get('biological_sex', 'male').lower()
+            activity_level = user_profile.get('activity_level', 'moderately_active').lower()
+
+            # BMR Calculation (Mifflin-St Jeor)
+            if bio_sex == 'female':
+                bmr = (10 * weight) + (6.25 * height) - (5 * age) - 161
+            else:
+                bmr = (10 * weight) + (6.25 * height) - (5 * age) + 5
+            
+            # Activity multipliers
+            multipliers = {
+                'sedentary': 1.2,
+                'lightly_active': 1.375,
+                'moderately_active': 1.55,
+                'very_active': 1.725,
+                'extra_active': 1.9
+            }
+            activity_multiplier = multipliers.get(activity_level, 1.55)
+            
+            tdee = int(bmr * activity_multiplier)
+            total_cals = safe_int(data['totalCalories'])
+            calorie_balance = total_cals - tdee
+            
+        except Exception as e:
+            print(f"Error calculating TDEE: {str(e)}")
+            tdee = 2000
+            total_cals = safe_int(data['totalCalories'])
+            calorie_balance = total_cals - 2000
+
         # Prepare health record data for Firebase with validation
         try:
             health_record_data = {
@@ -1132,6 +1466,10 @@ def submit_health_data(request):
                 'workout_intensity': str(data['workoutIntensity']),
                 'workout_types': workout_types,
                 'calories_burned': safe_int(data.get('caloriesBurned', 0)),
+                
+                # Derived Fields
+                'estimated_tdee': tdee,
+                'calorie_balance': calorie_balance,
             }
             
             # Additional validation
@@ -1351,9 +1689,21 @@ def signup_view(request):
         email = request.POST.get('email')
         password = request.POST.get('password')
         goal = request.POST.get('goal')
+        
+        # New rich profile fields
+        try:
+            age = int(request.POST.get('age', 0))
+            weight = float(request.POST.get('weight', 0))
+            height = float(request.POST.get('height', 0))
+        except ValueError:
+            messages.error(request, "Invalid numerical values provided.")
+            return render(request, 'signup.html')
+            
+        biological_sex = request.POST.get('biological_sex')
+        activity_level = request.POST.get('activity_level')
 
         # Basic validation
-        if not all([name, email, password, goal]):
+        if not all([name, email, password, goal, age, weight, height, biological_sex, activity_level]):
             messages.error(request, "All fields are required.")
             return render(request, 'signup.html')
 
@@ -1362,11 +1712,21 @@ def signup_view(request):
             user = auth.create_user_with_email_and_password(email, password)
             uid = user['localId']
 
+            # Calculate immediate BMI
+            height_m = height / 100.0
+            bmi = round(weight / (height_m * height_m), 1) if height_m > 0 else 0
+
             # Store user profile in Realtime DB
             data = {
                 "name": name,
                 "email": email,
                 "goal": goal,
+                "age": age,
+                "biological_sex": biological_sex,
+                "weight": weight,
+                "height": height,
+                "activity_level": activity_level,
+                "bmi": bmi,
                 "created_at": timezone.now().isoformat()
             }
             db.child("users").child(uid).set(data)
@@ -1387,3 +1747,62 @@ def logout_view(request):
     request.session.flush()  # This clears all session data
     messages.success(request, "Logged out successfully!")
     return redirect('login')
+
+def weigh_in_view(request):
+    user = request.session.get('user')
+    if not user:
+        messages.warning(request, "Please login to access weigh-in.")
+        return redirect('login')
+    
+    uid = user['uid']
+    
+    if request.method == 'POST':
+        try:
+            new_weight = float(request.POST.get('weight', 0))
+            if new_weight <= 0:
+                messages.error(request, "Please enter a valid weight.")
+                return redirect('weigh_in')
+                
+            # Fetch current profile to get height to recalculate BMI
+            user_profile = db.child("users").child(uid).get().val()
+            if not user_profile:
+                messages.error(request, "User profile not found. Please try again.")
+                return redirect('dashboard')
+            
+            height = float(user_profile.get('height', 0))
+            height_m = height / 100.0
+            new_bmi = round(new_weight / (height_m * height_m), 1) if height_m > 0 else 0
+            
+            # Update user profile
+            db.child("users").child(uid).update({
+                "weight": new_weight,
+                "bmi": new_bmi,
+                "last_weigh_in": timezone.now().isoformat()
+            })
+            
+            # Log weekly weigh-in history
+            date_str = timezone.now().date().strftime('%Y-%m-%d')
+            db.child("weigh_ins").child(uid).child(date_str).set({
+                "weight": new_weight,
+                "bmi": new_bmi,
+                "logged_at": timezone.now().isoformat()
+            })
+            
+            messages.success(request, "Weigh-in recorded successfully!")
+            return redirect('dashboard')
+            
+        except ValueError:
+            messages.error(request, "Invalid weight value.")
+            return redirect('weigh_in')
+        except Exception as e:
+            messages.error(request, f"Error recording weigh-in: {str(e)}")
+            return redirect('weigh_in')
+            
+    # GET request - load user current weight for display
+    try:
+        user_profile = db.child("users").child(uid).get().val() or {}
+        current_weight = user_profile.get('weight', '')
+    except Exception:
+        current_weight = ''
+        
+    return render(request, 'weigh_in.html', {'user': user, 'current_weight': current_weight})
