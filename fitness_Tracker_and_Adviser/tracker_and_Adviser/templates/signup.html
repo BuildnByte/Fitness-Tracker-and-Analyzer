@@ -416,27 +416,48 @@
                     <option value="extra_active">Extra active (very hard exercise/physical job)</option>
                 </select>
             </div>
-
-                        <div class="form-group">
-                            <label class="form-label" for="target_water">Daily Water Target (L)</label>
-                            <input type="number" id="target_water" name="target_water" 
-                                   class="form-input" step="0.1" min="1" max="5" placeholder="2.5">
-                        </div>
+            <div id="customTargets" class="custom-targets">
+                <h3 class="section-title" style="margin-bottom: 0.5rem;">Customize Baseline Targets (Optional)</h3>
+                <p class="goal-description">Adjust these targets to better fit your personal needs. Leave blank to use AI recommended defaults.</p>
+                
+                <div class="targets-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="target_sleep_hours">Daily Sleep Target (hrs)</label>
+                        <input type="number" id="target_sleep_hours" name="target_sleep_hours" 
+                               class="form-input" step="0.5" min="4" max="15" placeholder="7.5">
                     </div>
 
-                    <div class="info-box">
-                        <div class="info-box-text">
-                            <strong>Note:</strong> These targets will be used to calculate your progress score. 
-                            You can always adjust them later in your profile settings.
-                        </div>
+                    <div class="form-group">
+                        <label class="form-label" for="target_calories">Daily Calorie Target (kcal)</label>
+                        <input type="number" id="target_calories" name="target_calories" 
+                               class="form-input" step="50" min="1000" max="5000" placeholder="2000">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="target_weekly_workouts">Weekly Workout Days</label>
+                        <input type="number" id="target_weekly_workouts" name="target_weekly_workouts" 
+                               class="form-input" min="1" max="7" placeholder="4">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="target_water">Daily Water Target (L)</label>
+                        <input type="number" id="target_water" name="target_water" 
+                               class="form-input" step="0.1" min="1" max="5" placeholder="2.5">
                     </div>
                 </div>
 
-                <div style="text-align: center; margin-top: 1rem;">
-                    <button type="button" id="customizeBtn" style="background: none; border: 1px solid #667eea; color: #667eea; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-size: 0.9rem;">
-                        Customize Targets
-                    </button>
+                <div class="info-box" style="margin-top: 1.5rem;">
+                    <div class="info-box-text">
+                        <strong>Note:</strong> These targets will be used to calculate your progress score. 
+                        You can always adjust them later in your profile settings.
+                    </div>
                 </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 1rem; margin-bottom: 1.5rem;">
+                <button type="button" id="customizeBtn" style="background: none; border: 1px solid #667eea; color: #667eea; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-size: 0.9rem;">
+                    Customize Targets
+                </button>
             </div>
 
             <button type="submit" class="submit-btn">
@@ -486,9 +507,28 @@
             signupBtn.textContent = '';
         });
 
-        function togglePassword(inputId) {
-            const passwordInput = document.getElementById(inputId);
-            const toggleBtn = passwordInput.nextElementSibling;
+        // Goal selection functionality
+        document.querySelectorAll('.baseline-card').forEach(card => {
+            card.addEventListener('click', function() {
+                // Remove selected class from all cards
+                document.querySelectorAll('.baseline-card').forEach(c => c.classList.remove('selected'));
+                
+                // Add selected class to clicked card
+                this.classList.add('selected');
+                
+                // Set hidden input value
+                const goal = this.dataset.goal;
+                document.getElementById('goal').value = goal;
+                
+                // Update custom targets placeholders based on selected goal
+                updatePlaceholders(goal);
+            });
+        });
+
+        // Custom targets toggle
+        document.getElementById('customizeBtn').addEventListener('click', function() {
+            const customTargets = document.getElementById('customTargets');
+            const isVisible = customTargets.classList.contains('show');
             
             if (isVisible) {
                 customTargets.classList.remove('show');

@@ -83,10 +83,10 @@ WSGI_APPLICATION = 'fitness_Tracker_and_Adviser.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+db_file = os.path.join(BASE_DIR, 'db.sqlite3')
 DATABASES = {
     'default': dj_database_url.config(
-        # Get the DATABASE_URL from Vercel's environment variables
-        default=os.environ.get('DATABASE_URL'),
+        default=os.environ.get('DATABASE_URL', f'sqlite:///{db_file}'),
         conn_max_age=600
     )
 }

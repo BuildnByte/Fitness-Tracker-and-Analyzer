@@ -317,14 +317,14 @@ def weekly_plan_generation_task():
     """Celery task to generate weekly plans"""
     generate_all_weekly_plans()
 
-# Django management command
-class Command(BaseCommand):
-    help = 'Generate weekly plans for all users'
+# # Django management command
+# class Command(BaseCommand):
+#     help = 'Generate weekly plans for all users'
     
-    def handle(self, *args, **options):
-        self.stdout.write('Starting weekly plan generation...')
-        generate_all_weekly_plans()
-        self.stdout.write(self.style.SUCCESS('Weekly plan generation completed'))
+#     def handle(self, *args, **options):
+#         self.stdout.write('Starting weekly plan generation...')
+#         generate_all_weekly_plans()
+#         self.stdout.write(self.style.SUCCESS('Weekly plan generation completed'))
 
 firebase_config = {
     "apiKey": settings.FIREBASE_API_KEY,
@@ -360,6 +360,38 @@ if not firebase_admin._apps:
             firebase_admin.initialize_app(cred)
         except FileNotFoundError:
             print("ERROR: Firebase credentials not found.")
+
+def login_view(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+
+        try:
+            user = auth.sign_in_with_email_and_password(email, password)
+            uid = user['localId']
+            user_data = db.child("users").child(uid).get().val()
+
+            # Check if user_data exists
+            if user_data:
+                request.session['user'] = {
+                    'email': email,
+                    'name': user_data.get('name', ''),
+                    'goal': user_data.get('goal', ''),
+                    'uid': uid
+                }
+                
+                messages.success(request, "Login successful!")
+                return redirect('dashboard')
+            else:
+                messages.error(request, "User profile not found.")
+        except Exception as e:
+            try:
+                error_detail = json.loads(e.args[1])['error']['message']
+            except (IndexError, KeyError, json.JSONDecodeError):
+                error_detail = str(e)
+            messages.error(request, f"Login failed: {error_detail}")
+    
+    return render(request, 'login.html')
 
 # ============================================================================
 # UTILITY FUNCTIONS
@@ -529,7 +561,7 @@ def has_record_for_date(uid, check_date):
 def get_weekly_stats(uid):
     """Calculate comprehensive weekly statistics"""
     start_date, end_date = get_week_dates()
-    records = get_health_records(uid, start_date, end_date)
+    records = get_health_records_from_firebase(uid, start_date, end_date)
     
     if not records:
         return None
@@ -1295,44 +1327,28 @@ def workout_plan_view_updated(request):
                 'week_end': weekly_plan.get('week_end_date'),
                 'generated_at': weekly_plan.get('generated_at')
             }
-            db.child("users").child(uid).set(data)
-            
-            # Set up baseline targets
-            custom_targets = {}
-            for field, key in [('target_sleep_hours', 'sleep_hours'), 
-                              ('target_calories', 'calories'),
-                              ('target_weekly_workouts', 'active_days'),
-                              ('target_water', 'water_intake')]:
-                value = request.POST.get(field)
-                if value:
-                    custom_targets[key] = float(value) if '.' in value else int(value)
-            
-            save_user_baseline(uid, goal, custom_targets if custom_targets else None)
-
-            messages.success(request, "Registered successfully! Your baseline targets have been set.")
-            return redirect('login')
-        except Exception as e:
-            try:
-                error_detail = json.loads(e.args[1])['error']['message']
-            except:
-                error_detail = str(e)
-            messages.error(request, f"Registration failed: {error_detail}")
-    
-    context = {
-        'baseline_options': {
-            'weight_loss': get_baseline_targets('weight_loss'),
-            'muscle_gain': get_baseline_targets('muscle_gain'),
-            'endurance': get_baseline_targets('endurance'),
-            'general': get_baseline_targets('general')
         }
-    }
-    return render(request, 'signup.html', context)
+        
+        return render(request, "workout_plan.html", context)
+        
+    except Exception as e:
+        print(f"Error in workout_plan_view: {str(e)}")
+        messages.error(request, "Error loading workout plan. Please try again.")
+        return redirect('dashboard')
 
-def logout_view(request):
-    """User logout"""
-    request.session.flush()
-    messages.success(request, "Logged out successfully!")
-    return redirect('login')
+
+# API endpoint to manually trigger plan generation (admin use)
+@csrf_exempt
+def generate_plans_manually(request):
+    """Manual trigger for plan generation (for testing/admin)"""
+    if request.method == 'POST':
+        try:
+            generate_all_weekly_plans()
+            return JsonResponse({'success': True, 'message': 'Weekly plans generated successfully'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Method not allowed'})
 
 def dashboard_view_with_progress(request):
     """Main dashboard with progress tracking"""
@@ -1352,7 +1368,7 @@ def dashboard_view_with_progress(request):
         # Chart data
         end_date = timezone.now().date()
         start_date = end_date - timedelta(days=6)
-        recent_records = get_health_records(uid, start_date, end_date)
+        recent_records = get_health_records_from_firebase(uid, start_date, end_date)
         chart_data = prepare_chart_data(recent_records, start_date, end_date)
 
         # Weekly plan
@@ -1371,6 +1387,22 @@ def dashboard_view_with_progress(request):
             except Exception as e:
                 print(f"Error generating fallback plan: {str(e)}")
 
+        baseline = get_user_baseline(uid)
+        progress_data = None
+        if weekly_stats and baseline:
+            progress_data = calculate_progress_score(weekly_stats, baseline)
+            # Log progress for history keeping
+            save_progress_history(uid, progress_data)
+            
+        progress_trend = get_progress_trend(uid)
+        
+        plan_week_info = {}
+        if combined_plan:
+            plan_week_info = {
+                'start': combined_plan.get('week_start_date'),
+                'end': combined_plan.get('week_end_date')
+            }
+
         context = {
             'user': user,
             'user_profile': user_profile,
@@ -1378,7 +1410,7 @@ def dashboard_view_with_progress(request):
             'weekly_stats': weekly_stats,
             'chart_data': json.dumps(chart_data, default=str),
             'current_streak': get_current_streak(uid),
-            'total_records': len(get_health_records(uid)),
+            'total_records': len(get_health_records_from_firebase(uid)),
             'combined_plan': combined_plan,
             'plan_week_info': plan_week_info,
             'progress_data': progress_data,
@@ -1801,17 +1833,37 @@ def signup_view(request):
                 "created_at": timezone.now().isoformat()
             }
             db.child("users").child(uid).set(data)
+            
+            # Set up baseline targets
+            custom_targets = {}
+            for field, key in [('target_sleep_hours', 'sleep_hours'), 
+                              ('target_calories', 'calories'),
+                              ('target_weekly_workouts', 'active_days'),
+                              ('target_water', 'water_intake')]:
+                value = request.POST.get(field)
+                if value:
+                    custom_targets[key] = float(value) if '.' in value else int(value)
+            
+            save_user_baseline(uid, goal, custom_targets if custom_targets else None)
 
-            messages.success(request, "Registered successfully! Please login.")
+            messages.success(request, "Registered successfully! Your baseline targets have been set.")
             return redirect('login')
         except Exception as e:
             try:
                 error_detail = json.loads(e.args[1])['error']['message']
-            except (IndexError, KeyError, json.JSONDecodeError):
+            except:
                 error_detail = str(e)
             messages.error(request, f"Registration failed: {error_detail}")
     
-    return render(request, 'signup.html')
+    context = {
+        'baseline_options': {
+            'weight_loss': get_baseline_targets('weight_loss'),
+            'muscle_gain': get_baseline_targets('muscle_gain'),
+            'endurance': get_baseline_targets('endurance'),
+            'general': get_baseline_targets('general')
+        }
+    }
+    return render(request, 'signup.html', context)
 
 def logout_view(request):
     """Logout function to clear session"""
