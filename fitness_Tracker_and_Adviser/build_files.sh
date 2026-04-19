@@ -1,6 +1,8 @@
 #!/bin/bash
+set -e
 
-# Install dependencies
+# Upgrade pip and install dependencies
+python3.12 -m pip install --upgrade pip
 python3.12 -m pip install -r requirements.txt
 
 # Run collectstatic
