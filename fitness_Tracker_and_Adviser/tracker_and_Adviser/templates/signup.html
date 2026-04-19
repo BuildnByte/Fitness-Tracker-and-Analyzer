@@ -1,581 +1,287 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign Up - Set Your Health Goals | FitTrack Pro</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+{% extends 'base_auth.html' %}
+{% load static %}
 
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
-        }
+{% block title %}Create Account | FitTrack Pro{% endblock %}
 
-        .signup-container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 3rem;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            max-width: 600px;
-            width: 100%;
-        }
+{% block extra_head %}
+<style>
+    .goal-card.selected {
+        border-color: #10b981; 
+        background: rgba(16, 185, 129, 0.1);
+        box-shadow: 0 0 0 1px #10b981;
+    }
+    .custom-targets {
+        display: none;
+        animation: fadeIn 0.3s ease-out;
+    }
+    .custom-targets.show {
+        display: block;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+{% endblock %}
 
-        .form-header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        .form-header h1 {
-            color: #1a1a1a;
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-
-        .form-header p {
-            color: #6b7280;
-            font-size: 1rem;
-        }
-
-        .form-section {
-            margin-bottom: 2rem;
-        }
-
-        .section-title {
-            color: #374151;
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .form-label {
-            display: block;
-            color: #374151;
-            font-weight: 500;
-            margin-bottom: 0.5rem;
-            font-size: 0.9rem;
-        }
-
-        .form-input, .form-select {
-            width: 100%;
-            padding: 0.875rem 1rem;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            background: white;
-        }
-
-        .form-input:focus, .form-select:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .baseline-section {
-            background: rgba(102, 126, 234, 0.05);
-            border-radius: 15px;
-            padding: 1.5rem;
-            margin-top: 1rem;
-        }
-
-        .baseline-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-
-        .baseline-card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            border: 2px solid transparent;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .baseline-card.selected {
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .baseline-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        .goal-title {
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 0.5rem;
-        }
-
-        .goal-description {
-            font-size: 0.85rem;
-            color: #6b7280;
-            margin-bottom: 1rem;
-        }
-
-        .goal-targets {
-            font-size: 0.8rem;
-            color: #374151;
-        }
-
-        .goal-targets div {
-            margin-bottom: 0.25rem;
-        }
-
-        .custom-targets {
-            display: none;
-            margin-top: 1rem;
-            padding: 1.5rem;
-            background: white;
-            border-radius: 12px;
-            border: 2px solid #e5e7eb;
-        }
-
-        .custom-targets.show {
-            display: block;
-        }
-
-        .targets-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-
-        .submit-btn {
-            width: 100%;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 1rem 2rem;
-            border: none;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-        }
-
-        .submit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        .login-link {
-            text-align: center;
-            margin-top: 1.5rem;
-        }
-
-        .login-link a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .login-link a:hover {
-            text-decoration: underline;
-        }
-
-        .alert {
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-            font-weight: 500;
-        }
-
-        .alert-error {
-            background: #fee2e2;
-            color: #991b1b;
-            border-left: 4px solid #ef4444;
-        }
-
-        .info-box {
-            background: rgba(59, 130, 246, 0.1);
-            border-radius: 10px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .info-box-title {
-            font-weight: 600;
-            color: #1e40af;
-            margin-bottom: 0.5rem;
-        }
-
-        .info-box-text {
-            font-size: 0.9rem;
-            color: #1e40af;
-            line-height: 1.5;
-        }
-
-        @media (max-width: 768px) {
-            .signup-container {
-                padding: 2rem;
-                margin: 1rem;
-            }
-
-            .baseline-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .targets-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="signup-container">
-        <div class="form-header">
-            <h1>Join FitTrack Pro</h1>
-            <p>Set your health goals and start your journey to better wellness</p>
+{% block content %}
+<div class="relative w-full max-w-4xl mx-auto my-8">
+    <!-- Glassmorphism Container -->
+    <div class="bg-dark-800/60 backdrop-blur-xl border border-dark-700/50 p-6 md:p-10 rounded-3xl shadow-2xl relative z-10">
+        
+        <div class="text-center mb-10">
+            <div class="w-16 h-16 bg-gradient-to-br from-emerald-400 to-electric-600 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-4 shadow-lg shadow-emerald-500/20">
+                🚀
+            </div>
+            <h1 class="text-3xl font-bold tracking-tight text-white mb-2">Join FitTrack Pro</h1>
+            <p class="text-gray-400">Start your intelligent fitness journey today</p>
         </div>
 
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-
-        <form method="post" id="signupForm">
+        <form method="POST" id="signupForm" class="space-y-8">
             {% csrf_token %}
             
-            <!-- Basic Information -->
-            <div class="form-section">
-                <h2 class="section-title">
-                    <span>👤</span>
-                    Basic Information
-                </h2>
+            <!-- Basic Info Section -->
+            <div class="space-y-4">
+                <h3 class="text-lg font-semibold text-white border-b border-dark-700 pb-2">Basic Information</h3>
                 
-                <div class="form-group">
-                    <label class="form-label" for="name">Full Name</label>
-                    <input type="text" id="name" name="name" class="form-input" required>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="email">Email Address</label>
-                    <input type="email" id="email" name="email" class="form-input" required>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="password">Password</label>
-                    <input type="password" id="password" name="password" class="form-input" required>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <label class="block text-sm font-medium text-gray-300" for="name">Full Name</label>
+                        <input type="text" id="name" name="name" required
+                            class="w-full px-4 py-3 bg-dark-900/50 border border-dark-700 rounded-xl text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                            placeholder="John Doe" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="block text-sm font-medium text-gray-300" for="email">Email Address</label>
+                        <input type="email" id="email" name="email" required
+                            class="w-full px-4 py-3 bg-dark-900/50 border border-dark-700 rounded-xl text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                            placeholder="name@example.com" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="block text-sm font-medium text-gray-300" for="password">Password</label>
+                        <input type="password" id="password" name="password" required
+                            class="w-full px-4 py-3 bg-dark-900/50 border border-dark-700 rounded-xl text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                            placeholder="At least 8 characters" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="block text-sm font-medium text-gray-300" for="confirm_password">Confirm Password</label>
+                        <input type="password" id="confirm_password" name="confirm_password" required
+                            class="w-full px-4 py-3 bg-dark-900/50 border border-dark-700 rounded-xl text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                            placeholder="Confirm password" />
+                    </div>
                 </div>
             </div>
 
-            <!-- Goal Selection -->
-            <div class="form-section">
-                <h2 class="section-title">
-                    <span>🎯</span>
-                    Select Your Primary Goal
-                </h2>
-
-                <div class="info-box">
-                    <div class="info-box-title">Why set baseline targets?</div>
-                    <div class="info-box-text">
-                        Your baseline targets help us track your progress and generate personalized AI recommendations. 
-                        You can use our recommended targets or customize them based on your current fitness level.
-                    </div>
+            <!-- Goal Selection Section -->
+            <div class="space-y-4">
+                <div class="flex items-center justify-between border-b border-dark-700 pb-2">
+                    <h3 class="text-lg font-semibold text-white">Select Your Primary Goal</h3>
                 </div>
-
+                
                 <input type="hidden" id="goal" name="goal" required>
                 
-                <div class="baseline-grid">
-                    <div class="baseline-card" data-goal="weight_loss">
-                        <div class="goal-title">Weight Loss</div>
-                        <div class="goal-description">Healthy weight loss with sustainable habits</div>
-                        <div class="goal-targets">
-                            <div><strong>Sleep:</strong> 7.5 hours</div>
-                            <div><strong>Calories:</strong> 1800/day</div>
-                            <div><strong>Water:</strong> 2.5L/day</div>
-                            <div><strong>Workouts:</strong> 5 days/week, 45 min</div>
-                            <div><strong>Junk Food:</strong> ≤1/4 level</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Weight Loss -->
+                    <div class="goal-card cursor-pointer border border-dark-700 bg-dark-900/50 rounded-xl p-4 transition-all hover:border-emerald-500/50" data-goal="weight_loss">
+                        <h4 class="font-bold text-emerald-400 mb-1">Weight Loss</h4>
+                        <p class="text-sm text-gray-400 mb-3">Healthy weight loss with sustainable habits</p>
+                        <div class="text-xs text-gray-500 grid grid-cols-2 gap-y-1">
+                            <div><strong class="text-gray-300">Calories:</strong> 1800/day</div>
+                            <div><strong class="text-gray-300">Sleep:</strong> 7.5 hrs</div>
+                            <div><strong class="text-gray-300">Workouts:</strong> 5 days/wk</div>
+                            <div><strong class="text-gray-300">Water:</strong> 2.5L</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Muscle Gain -->
+                    <div class="goal-card cursor-pointer border border-dark-700 bg-dark-900/50 rounded-xl p-4 transition-all hover:border-emerald-500/50" data-goal="muscle_gain">
+                        <h4 class="font-bold text-emerald-400 mb-1">Muscle Gain</h4>
+                        <p class="text-sm text-gray-400 mb-3">Muscle building with adequate recovery</p>
+                        <div class="text-xs text-gray-500 grid grid-cols-2 gap-y-1">
+                            <div><strong class="text-gray-300">Calories:</strong> 2400/day</div>
+                            <div><strong class="text-gray-300">Sleep:</strong> 8.0 hrs</div>
+                            <div><strong class="text-gray-300">Workouts:</strong> 5 days/wk</div>
+                            <div><strong class="text-gray-300">Water:</strong> 3.0L</div>
                         </div>
                     </div>
 
-                    <div class="baseline-card" data-goal="muscle_gain">
-                        <div class="goal-title">Muscle Gain</div>
-                        <div class="goal-description">Muscle building with adequate recovery</div>
-                        <div class="goal-targets">
-                            <div><strong>Sleep:</strong> 8.0 hours</div>
-                            <div><strong>Calories:</strong> 2400/day</div>
-                            <div><strong>Water:</strong> 3.0L/day</div>
-                            <div><strong>Workouts:</strong> 5 days/week, 60 min</div>
-                            <div><strong>Junk Food:</strong> ≤1.5/4 level</div>
+                    <!-- Endurance -->
+                    <div class="goal-card cursor-pointer border border-dark-700 bg-dark-900/50 rounded-xl p-4 transition-all hover:border-emerald-500/50" data-goal="endurance">
+                        <h4 class="font-bold text-emerald-400 mb-1">Endurance Training</h4>
+                        <p class="text-sm text-gray-400 mb-3">Endurance training with optimal fueling</p>
+                        <div class="text-xs text-gray-500 grid grid-cols-2 gap-y-1">
+                            <div><strong class="text-gray-300">Calories:</strong> 2200/day</div>
+                            <div><strong class="text-gray-300">Sleep:</strong> 7.5 hrs</div>
+                            <div><strong class="text-gray-300">Workouts:</strong> 6 days/wk</div>
+                            <div><strong class="text-gray-300">Water:</strong> 3.5L</div>
                         </div>
                     </div>
 
-                    <div class="baseline-card" data-goal="endurance">
-                        <div class="goal-title">Endurance Training</div>
-                        <div class="goal-description">Endurance training with optimal fueling</div>
-                        <div class="goal-targets">
-                            <div><strong>Sleep:</strong> 7.5 hours</div>
-                            <div><strong>Calories:</strong> 2200/day</div>
-                            <div><strong>Water:</strong> 3.5L/day</div>
-                            <div><strong>Workouts:</strong> 6 days/week, 75 min</div>
-                            <div><strong>Junk Food:</strong> ≤1/4 level</div>
-                        </div>
-                    </div>
-
-                    <div class="baseline-card" data-goal="general">
-                        <div class="goal-title">General Fitness</div>
-                        <div class="goal-description">General health and wellness maintenance</div>
-                        <div class="goal-targets">
-                            <div><strong>Sleep:</strong> 7.5 hours</div>
-                            <div><strong>Calories:</strong> 2000/day</div>
-                            <div><strong>Water:</strong> 2.5L/day</div>
-                            <div><strong>Workouts:</strong> 4 days/week, 30 min</div>
-                            <div><strong>Junk Food:</strong> ≤2/4 level</div>
+                    <!-- General Fitness -->
+                    <div class="goal-card cursor-pointer border border-dark-700 bg-dark-900/50 rounded-xl p-4 transition-all hover:border-emerald-500/50" data-goal="general">
+                        <h4 class="font-bold text-emerald-400 mb-1">General Fitness</h4>
+                        <p class="text-sm text-gray-400 mb-3">General health and wellness maintenance</p>
+                        <div class="text-xs text-gray-500 grid grid-cols-2 gap-y-1">
+                            <div><strong class="text-gray-300">Calories:</strong> 2000/day</div>
+                            <div><strong class="text-gray-300">Sleep:</strong> 7.5 hrs</div>
+                            <div><strong class="text-gray-300">Workouts:</strong> 4 days/wk</div>
+                            <div><strong class="text-gray-300">Water:</strong> 2.5L</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                <div>
-                    <label class="form-label" for="age">Age</label>
-                    <input 
-                        type="number" 
-                        id="age" 
-                        name="age"
-                        class="form-input" 
-                        placeholder="e.g. 25"
-                        min="13" max="120"
-                        required 
-                    />
-                </div>
-                <div>
-                    <label class="form-label" for="biological_sex">Biological Sex</label>
-                    <select id="biological_sex" name="biological_sex" class="form-select" required>
-                        <option value="" disabled selected>Select...</option>
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                <div>
-                    <label class="form-label" for="weight">Weight (kg)</label>
-                    <input 
-                        type="number" 
-                        step="0.1"
-                        id="weight" 
-                        name="weight"
-                        class="form-input" 
-                        placeholder="e.g. 70.5"
-                        min="30" max="300"
-                        required 
-                    />
-                </div>
-                <div>
-                    <label class="form-label" for="height">Height (cm)</label>
-                    <input 
-                        type="number" 
-                        step="0.1"
-                        id="height" 
-                        name="height"
-                        class="form-input" 
-                        placeholder="e.g. 175"
-                        min="100" max="250"
-                        required 
-                    />
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label" for="activity_level">Activity Level</label>
-                <select id="activity_level" name="activity_level" class="form-select" required>
-                    <option value="" disabled selected>Select your activity level...</option>
-                    <option value="sedentary">Sedentary (little to no exercise)</option>
-                    <option value="lightly_active">Lightly active (light exercise 1-3 days/week)</option>
-                    <option value="moderately_active">Moderately active (moderate exercise 3-5 days/week)</option>
-                    <option value="very_active">Very active (hard exercise 6-7 days/week)</option>
-                    <option value="extra_active">Extra active (very hard exercise/physical job)</option>
-                </select>
-            </div>
-            <div id="customTargets" class="custom-targets">
-                <h3 class="section-title" style="margin-bottom: 0.5rem;">Customize Baseline Targets (Optional)</h3>
-                <p class="goal-description">Adjust these targets to better fit your personal needs. Leave blank to use AI recommended defaults.</p>
+            <!-- Health Biometrics -->
+            <div class="space-y-4">
+                <h3 class="text-lg font-semibold text-white border-b border-dark-700 pb-2">Health Biometrics</h3>
                 
-                <div class="targets-grid">
-                    <div class="form-group">
-                        <label class="form-label" for="target_sleep_hours">Daily Sleep Target (hrs)</label>
-                        <input type="number" id="target_sleep_hours" name="target_sleep_hours" 
-                               class="form-input" step="0.5" min="4" max="15" placeholder="7.5">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="space-y-1">
+                        <label class="block text-sm font-medium text-gray-300" for="age">Age</label>
+                        <input type="number" id="age" name="age" required min="13" max="120"
+                            class="w-full px-4 py-3 bg-dark-900/50 border border-dark-700 rounded-xl text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" placeholder="e.g. 25" />
                     </div>
-
-                    <div class="form-group">
-                        <label class="form-label" for="target_calories">Daily Calorie Target (kcal)</label>
-                        <input type="number" id="target_calories" name="target_calories" 
-                               class="form-input" step="50" min="1000" max="5000" placeholder="2000">
+                    <div class="space-y-1">
+                        <label class="block text-sm font-medium text-gray-300" for="biological_sex">Biological Sex</label>
+                        <select id="biological_sex" name="biological_sex" required
+                            class="w-full px-4 py-3 bg-dark-900/50 border border-dark-700 rounded-xl text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+                            <option value="" disabled selected>Select...</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                        </select>
                     </div>
-
-                    <div class="form-group">
-                        <label class="form-label" for="target_weekly_workouts">Weekly Workout Days</label>
-                        <input type="number" id="target_weekly_workouts" name="target_weekly_workouts" 
-                               class="form-input" min="1" max="7" placeholder="4">
+                    <div class="space-y-1">
+                        <label class="block text-sm font-medium text-gray-300" for="activity_level">Activity Level</label>
+                        <select id="activity_level" name="activity_level" required
+                            class="w-full px-4 py-3 bg-dark-900/50 border border-dark-700 rounded-xl text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+                            <option value="" disabled selected>Select...</option>
+                            <option value="sedentary">Sedentary</option>
+                            <option value="lightly_active">Lightly active</option>
+                            <option value="moderately_active">Moderately active</option>
+                            <option value="very_active">Very active</option>
+                            <option value="extra_active">Extra active</option>
+                        </select>
                     </div>
-
-                    <div class="form-group">
-                        <label class="form-label" for="target_water">Daily Water Target (L)</label>
-                        <input type="number" id="target_water" name="target_water" 
-                               class="form-input" step="0.1" min="1" max="5" placeholder="2.5">
+                    <div class="space-y-1">
+                        <label class="block text-sm font-medium text-gray-300" for="weight">Weight (kg)</label>
+                        <input type="number" id="weight" name="weight" required step="0.1" min="30" max="300"
+                            class="w-full px-4 py-3 bg-dark-900/50 border border-dark-700 rounded-xl text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" placeholder="e.g. 70.5" />
                     </div>
-                </div>
-
-                <div class="info-box" style="margin-top: 1.5rem;">
-                    <div class="info-box-text">
-                        <strong>Note:</strong> These targets will be used to calculate your progress score. 
-                        You can always adjust them later in your profile settings.
+                    <div class="space-y-1">
+                        <label class="block text-sm font-medium text-gray-300" for="height">Height (cm)</label>
+                        <input type="number" id="height" name="height" required step="0.1" min="100" max="250"
+                            class="w-full px-4 py-3 bg-dark-900/50 border border-dark-700 rounded-xl text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" placeholder="e.g. 175" />
                     </div>
                 </div>
             </div>
 
-            <div style="text-align: center; margin-top: 1rem; margin-bottom: 1.5rem;">
-                <button type="button" id="customizeBtn" style="background: none; border: 1px solid #667eea; color: #667eea; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-size: 0.9rem;">
-                    Customize Targets
+            <!-- Customize Targets Logic -->
+            <div id="customTargets" class="custom-targets space-y-4">
+                <h3 class="text-lg font-semibold text-white border-b border-dark-700 pb-2">Customize Baseline Targets (Optional)</h3>
+                <p class="text-sm text-gray-400">Adjust these targets to better fit your personal needs. Leave blank to use AI recommended defaults.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="space-y-1">
+                        <label class="block text-sm font-medium text-gray-300" for="target_sleep_hours">Sleep (hrs)</label>
+                        <input type="number" id="target_sleep_hours" name="target_sleep_hours" step="0.5" min="4" max="15"
+                            class="w-full px-4 py-2 bg-dark-900/50 border border-dark-700 rounded-xl text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" placeholder="7.5" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="block text-sm font-medium text-gray-300" for="target_calories">Calories (kcal)</label>
+                        <input type="number" id="target_calories" name="target_calories" step="50" min="1000" max="5000"
+                            class="w-full px-4 py-2 bg-dark-900/50 border border-dark-700 rounded-xl text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" placeholder="2000" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="block text-sm font-medium text-gray-300" for="target_weekly_workouts">Workout Days</label>
+                        <input type="number" id="target_weekly_workouts" name="target_weekly_workouts" min="1" max="7"
+                            class="w-full px-4 py-2 bg-dark-900/50 border border-dark-700 rounded-xl text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" placeholder="4" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="block text-sm font-medium text-gray-300" for="target_water">Water (L)</label>
+                        <input type="number" id="target_water" name="target_water" step="0.1" min="1" max="5"
+                            class="w-full px-4 py-2 bg-dark-900/50 border border-dark-700 rounded-xl text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" placeholder="2.5" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-col items-center gap-4 mt-6">
+                <button type="button" id="customizeBtn" class="text-sm font-medium text-electric-400 hover:text-electric-300 underline underline-offset-4 decoration-electric-500/30 transition-colors">
+                    Customize Target Settings
+                </button>
+
+                <button type="submit" id="signupBtn" class="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/25 transition-all transform hover:-translate-y-0.5 mt-4 text-lg">
+                    Create Account & Set Goals
                 </button>
             </div>
-
-            <button type="submit" class="submit-btn">
-                Create Account & Set Goals
-            </button>
+            
         </form>
 
-        <div class="login-link">
-            Already have an account? <a href="{% url 'login' %}">Sign in here</a>
-        </div>
+        <p class="text-center text-sm text-gray-400 mt-8">
+            Already have an account? 
+            <a href="{% url 'login' %}" class="font-semibold text-white hover:text-emerald-400 transition-colors">Sign in here</a>
+        </p>
     </div>
+</div>
 
-    <script>
-        let selectedGoal = '';
-
-        document.getElementById('signupForm').addEventListener('submit', function(e) {
-            // Basic client-side validation
-            const name = document.getElementById('name').value.trim();
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-            const age = document.getElementById('age').value;
-            const biological_sex = document.getElementById('biological_sex').value;
-            const weight = document.getElementById('weight').value;
-            const height = document.getElementById('height').value;
-            const activity_level = document.getElementById('activity_level').value;
-            const goal = document.getElementById('goal').value;
-
-            if (!name || !email || !password || !goal || !age || !biological_sex || !weight || !height || !activity_level) {
-                e.preventDefault();
-                alert('Please fill in all fields and select a fitness goal.');
-                return;
-            }
-
-            // Check password requirements
-            const passwordValid = password.length >= 8 &&
-                                  /[A-Z]/.test(password) &&
-                                  /\d/.test(password);
-            if (!passwordValid) {
-                e.preventDefault();
-                alert('Password must be at least 8 characters long and contain one uppercase letter and one number.');
-                return;
-            }
-
-            // Show loading state
-            const signupBtn = document.getElementById('signupBtn');
-            signupBtn.classList.add('loading');
-            signupBtn.textContent = '';
-        });
-
-        // Goal selection functionality
-        document.querySelectorAll('.baseline-card').forEach(card => {
-            card.addEventListener('click', function() {
-                // Remove selected class from all cards
-                document.querySelectorAll('.baseline-card').forEach(c => c.classList.remove('selected'));
-                
-                // Add selected class to clicked card
-                this.classList.add('selected');
-                
-                // Set hidden input value
-                const goal = this.dataset.goal;
-                document.getElementById('goal').value = goal;
-                
-                // Update custom targets placeholders based on selected goal
-                updatePlaceholders(goal);
-            });
-        });
-
-        // Custom targets toggle
-        document.getElementById('customizeBtn').addEventListener('click', function() {
-            const customTargets = document.getElementById('customTargets');
-            const isVisible = customTargets.classList.contains('show');
+{% block extra_scripts %}
+<script>
+    document.querySelectorAll('.goal-card').forEach(card => {
+        card.addEventListener('click', function() {
+            document.querySelectorAll('.goal-card').forEach(c => c.classList.remove('selected'));
+            this.classList.add('selected');
+            const goal = this.dataset.goal;
+            document.getElementById('goal').value = goal;
             
-            if (isVisible) {
-                customTargets.classList.remove('show');
-                this.textContent = 'Customize Targets';
-            } else {
-                customTargets.classList.add('show');
-                this.textContent = 'Hide Custom Targets';
-            }
-        });
-
-        // Update placeholders based on goal selection
-        function updatePlaceholders(goal) {
             const baselines = {
                 weight_loss: { sleep: '7.5', calories: '1800', workouts: '5', water: '2.5' },
                 muscle_gain: { sleep: '8.0', calories: '2400', workouts: '5', water: '3.0' },
                 endurance: { sleep: '7.5', calories: '2200', workouts: '6', water: '3.5' },
                 general: { sleep: '7.5', calories: '2000', workouts: '4', water: '2.5' }
             };
-            
             const targets = baselines[goal] || baselines.general;
-            
             document.getElementById('target_sleep_hours').placeholder = targets.sleep;
             document.getElementById('target_calories').placeholder = targets.calories;
             document.getElementById('target_weekly_workouts').placeholder = targets.workouts;
             document.getElementById('target_water').placeholder = targets.water;
+        });
+    });
+
+    document.getElementById('customizeBtn').addEventListener('click', function() {
+        const p = document.getElementById('customTargets');
+        if (p.classList.contains('show')) {
+            p.classList.remove('show');
+            this.textContent = 'Customize Target Settings';
+        } else {
+            p.classList.add('show');
+            this.textContent = 'Hide Target Settings';
+        }
+    });
+
+    document.getElementById('signupForm').addEventListener('submit', function(e) {
+        if (!document.getElementById('goal').value) {
+            e.preventDefault();
+            alert('Please select a fitness goal.');
+            return;
+        }
+        
+        const pwd = document.getElementById('password').value;
+        const confirm_pwd = document.getElementById('confirm_password').value;
+        if (pwd !== confirm_pwd) {
+            e.preventDefault();
+            alert('Passwords do not match!');
+            return;
+        }
+        const pwdValid = pwd.length >= 8 && /[A-Z]/.test(pwd) && /\d/.test(pwd);
+        if(!pwdValid) {
+            e.preventDefault();
+            alert('Password must be at least 8 characters long and contain an uppercase letter and a number.');
+            return;
         }
 
-        // Form validation
-        document.getElementById('signupForm').addEventListener('submit', function(e) {
-            const goal = document.getElementById('goal').value;
-            if (!goal) {
-                e.preventDefault();
-                alert('Please select a fitness goal before creating your account.');
-                return;
-            }
-        });
-
-        // Add some visual feedback for form interactions
-        document.querySelectorAll('.form-input').forEach(input => {
-            input.addEventListener('focus', function() {
-                this.parentElement.style.transform = 'translateY(-1px)';
-            });
-            
-            input.addEventListener('blur', function() {
-                this.parentElement.style.transform = 'translateY(0)';
-            });
-        });
-    </script>
-</body>
-</html>
+        const signupBtn = document.getElementById('signupBtn');
+        signupBtn.classList.add('opacity-80', 'cursor-not-allowed');
+        signupBtn.textContent = 'Processing...';
+    });
+</script>
+{% endblock %}
+{% endblock %}

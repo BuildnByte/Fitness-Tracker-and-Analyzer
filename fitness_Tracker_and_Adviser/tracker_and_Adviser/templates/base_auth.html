@@ -1,0 +1,103 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Fitness Tracker Pro{% endblock %}</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        dark: {
+                            900: '#0B0F19', // Deepest background
+                            800: '#111827', // Card background
+                            700: '#1F2937', // Borders, subtle backgrounds
+                        },
+                        emerald: {
+                            400: '#34d399',
+                            500: '#10b981',
+                            600: '#059669',
+                        },
+                        electric: {
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Ambient Background Glows */
+        .ambient-glow {
+            position: absolute;
+            width: 60vw;
+            height: 60vw;
+            background: radial-gradient(circle, rgba(16,185,129,0.1) 0%, rgba(0,0,0,0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+            top: -20vw;
+            left: -20vw;
+        }
+        .ambient-glow-2 {
+            position: absolute;
+            width: 50vw;
+            height: 50vw;
+            background: radial-gradient(circle, rgba(59,130,246,0.1) 0%, rgba(0,0,0,0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+            bottom: -15vw;
+            right: -15vw;
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-dark-900 text-gray-200 font-sans min-h-screen relative overflow-x-hidden antialiased flex items-center justify-center">
+    
+    <!-- Background Effects -->
+    <div class="ambient-glow"></div>
+    <div class="ambient-glow-2"></div>
+    
+    <!-- Alert Messages (Toast style) -->
+    <div class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="p-4 rounded-xl shadow-lg border backdrop-blur-md flex items-start gap-3 transform transition-all duration-300 animate-[slideIn_0.3s_ease-out]
+                    {% if message.tags == 'success' %} bg-emerald-500/10 border-emerald-500/30 text-emerald-400
+                    {% elif message.tags == 'error' %} bg-red-500/10 border-red-500/30 text-red-400
+                    {% elif message.tags == 'warning' %} bg-orange-500/10 border-orange-500/30 text-orange-400
+                    {% else %} bg-electric-500/10 border-electric-500/30 text-electric-400 {% endif %}">
+                    <div class="flex-1 text-sm font-medium">{{ message }}</div>
+                    <button onclick="this.parentElement.remove()" class="text-gray-400 hover:text-white transition-colors">&times;</button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Main Content Container -->
+    <div class="relative z-10 w-full max-w-lg p-6">
+        {% block content %}{% endblock %}
+    </div>
+
+    <style>
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</body>
+</html>

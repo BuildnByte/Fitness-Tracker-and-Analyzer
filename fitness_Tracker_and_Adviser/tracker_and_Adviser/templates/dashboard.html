@@ -1,1786 +1,252 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daily Health Dashboard | FitTrack Pro</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-    {% if messages %}
-        <style>
-            .messages {
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                z-index: 9999;
-                max-width: 400px;
-            }
-            .alert {
-                padding: 1rem 1.5rem;
-                border-radius: 8px;
-                margin-bottom: 1rem;
-                font-weight: 500;
-                animation: slideIn 0.3s ease-out;
-            }
-            .alert-success { background: #d1fae5; color: #065f46; border-left: 4px solid #10b981; }
-            .alert-error { background: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444; }
-            .alert-info { background: #dbeafe; color: #1e40af; border-left: 4px solid #3b82f6; }
-            .alert-warning { background: #fef3c7; color: #92400e; border-left: 4px solid #f59e0b; }
-            @keyframes slideIn {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-        </style>
-    {% endif %}
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            min-height: 100vh;
-            position: relative;
-            overflow-x: hidden;
-        }
-
-        /* Animated background */
-        body::before {
-            content: '';
-            position: fixed;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px);
-            background-size: 50px 50px;
-            animation: float 30s linear infinite;
-            z-index: 0;
-        }
-
-        @keyframes float {
-            0% { transform: translate(0, 0) rotate(0deg); }
-            100% { transform: translate(-30px, -30px) rotate(360deg); }
-        }
-
-        .dashboard-container {
-            position: relative;
-            z-index: 1;
-            padding: 2rem;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .header {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .add-data-btn {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 12px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-        }
-
-        .add-data-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-        }
-
-        .add-data-btn.disabled {
-            background: #9ca3af;
-            cursor: not-allowed;
-            box-shadow: none;
-        }
-
-        .add-data-btn.disabled:hover {
-            transform: none;
-        }
-
-        .logout-btn {
-            background: rgba(239, 68, 68, 0.1);
-            color: #ef4444;
-            padding: 0.75rem 1.5rem;
-            border-radius: 12px;
-            text-decoration: none;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-
-        .logout-btn:hover {
-            background: rgba(239, 68, 68, 0.2);
-        }
-
-        .user-info h1 {
-            color: #1a1a1a;
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-
-        .user-info p {
-            color: #6b7280;
-            font-size: 1rem;
-        }
-
-        .streak-info {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 1rem 1.5rem;
-            border-radius: 15px;
-            font-weight: 600;
-        }
-
-        .streak-number {
-            font-size: 2rem;
-            font-weight: 800;
-        }
-
-        .no-data-message {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 3rem;
-            text-align: center;
-            margin-bottom: 2rem;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        }
-
-        .no-data-message h2 {
-            color: #374151;
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .no-data-message p {
-            color: #6b7280;
-            margin-bottom: 2rem;
-        }
-
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-
-        /* Progress Section Styles */
-        .progress-section {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        }
-
-        .progress-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-
-        .progress-title {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .card-icon {
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            color: white;
-        }
-
-        .card-title {
-            color: #1a1a1a;
-            font-size: 1.25rem;
-            font-weight: 600;
-        }
-
-        .progress-score {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .score-circle {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            background: conic-gradient(from 0deg, var(--progress-color) 0deg, var(--progress-color) var(--progress-angle, 0deg), #e5e7eb var(--progress-angle, 0deg), #e5e7eb 360deg);
-        }
-
-        .score-circle::before {
-            content: '';
-            position: absolute;
-            inset: 10px;
-            border-radius: 50%;
-            background: white;
-        }
-
-        .score-value {
-            position: relative;
-            z-index: 2;
-            font-size: 2rem;
-            font-weight: 800;
-            color: #1a1a1a;
-        }
-
-        .score-label {
-            position: relative;
-            z-index: 2;
-            font-size: 0.8rem;
-            color: #6b7280;
-            font-weight: 600;
-        }
-
-        .progress-level {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .metric-card {
-            background: rgba(255, 255, 255, 0.7);
-            border-radius: 15px;
-            padding: 1.5rem;
-            transition: transform 0.3s ease;
-        }
-
-        .metric-card:hover {
-            transform: translateY(-3px);
-        }
-
-        .metric-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        .metric-name {
-            font-weight: 600;
-            color: #374151;
-            font-size: 0.9rem;
-        }
-
-        .metric-score {
-            font-weight: 700;
-            font-size: 1.1rem;
-        }
-
-        .metric-progress {
-            background: #e5e7eb;
-            border-radius: 10px;
-            height: 8px;
-            margin-bottom: 0.5rem;
-            overflow: hidden;
-        }
-
-        .metric-progress-bar {
-            height: 100%;
-            border-radius: 10px;
-            transition: width 0.8s ease;
-        }
-
-        .metric-comparison {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.8rem;
-        }
-
-        .current-value {
-            color: #374151;
-            font-weight: 600;
-        }
-
-        .target-value {
-            color: #6b7280;
-        }
-
-        .trend-indicator {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-top: 1rem;
-            padding: 0.75rem;
-            background: rgba(102, 126, 234, 0.05);
-            border-radius: 10px;
-        }
-
-        .trend-text {
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: #374151;
-        }
-
-        .card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 2rem;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-        }
-
-        .card-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .card-icon {
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            color: white;
-        }
-
-        .card-title {
-            color: #1a1a1a;
-            font-size: 1.25rem;
-            font-weight: 600;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 15px;
-            padding: 1.5rem;
-            text-align: center;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-3px);
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 800;
-            color: #667eea;
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-label {
-            color: #6b7280;
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-
-        .chart-container {
-            position: relative;
-            height: 300px;
-            margin-bottom: 1rem;
-        }
-
-        .insights-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-
-        .insight-item {
-            background: rgba(255, 255, 255, 0.7);
-            border-radius: 10px;
-            padding: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .insight-icon {
-            width: 35px;
-            height: 35px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1rem;
-        }
-
-        .insight-text {
-            flex: 1;
-            color: #374151;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        .mood-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: rgba(102, 126, 234, 0.1);
-            padding: 0.5rem 1rem;
-            border-radius: 25px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: #667eea;
-        }
-
-        .summary-cards {
-            grid-column: 1 / -1;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .summary-card {
-            background: linear-gradient(135deg, rgb(210, 218, 255), rgb(255, 255, 255));
-            border: 2px solid rgba(102, 126, 234, 0.2);
-            border-radius: 15px;
-            padding: 1.5rem;
-            transition: all 0.3s ease;
-        }
-
-        .summary-card:hover {
-            background: linear-gradient(135deg, rgb(210, 218, 255), rgb(255, 255, 255));
-            border-color: rgba(102, 126, 234, 0.3);
-            transform: translateY(-2px);
-        }
-
-        .summary-title {
-            color: #1a1a1a;
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .progress-indicator {
-            background: #e5e7eb;
-            border-radius: 10px;
-            height: 8px;
-            margin: 1rem 0;
-            overflow: hidden;
-        }
-
-        .progress-bar {
-            height: 100%;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 10px;
-            transition: width 0.3s ease;
-        }
-
-        .metric-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.75rem 0;
-            border-bottom: 1px solid rgba(0,0,0,0.1);
-        }
-
-        .metric-row:last-child {
-            border-bottom: none;
-        }
-
-        .metric-label {
-            color: #6b7280;
-            font-size: 0.9rem;
-        }
-
-        .metric-value {
-            color: #374151;
-            font-weight: 600;
-        }
-
-        .mini-target-card {
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-        
-        .mini-target-card:hover {
-            transform: translateY(-2px);
-            background: rgba(102, 126, 234, 0.1) !important;
-        }
-
-        /* New styles for workout plan */
-        .ai-plans-section {
-            grid-column: 1 / -1;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            margin-top: 2rem;
-        }
-
-        .plan-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 2rem;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .plan-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-        }
-
-        .plan-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 1.5rem;
-        }
-
-        .plan-title-group {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .ai-badge {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 0.25rem 0.75rem;
-            border-radius: 15px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-
-        .plan-type-badge {
-            background: rgba(102, 126, 234, 0.1);
-            color: #667eea;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            display: inline-block;
-            margin-bottom: 1rem;
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-
-        .targets-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .workout-schedule {
-            background: rgba(102, 126, 234, 0.05);
-            border-radius: 10px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .day-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.5rem 0;
-            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
-        }
-
-        .day-item:last-child {
-            border-bottom: none;
-        }
-
-        .day-name {
-            font-weight: 600;
-            color: #374151;
-            font-size: 0.9rem;
-        }
-
-        .workout-type {
-            color: #667eea;
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-
-        .view-plan-btn {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 0.75rem 1.25rem;
-            border-radius: 12px;
-            text-decoration: none;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            transition: all 0.3s ease;
-        }
-
-        .view-plan-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-        }
-
-        .plan-overview {
-            background: rgba(102, 126, 234, 0.05);
-            border-radius: 10px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .plan-overview-title {
-            font-size: 0.85rem;
-            color: #6b7280;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-        }
-
-        .plan-overview-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.5rem;
-            font-size: 0.8rem;
-            color: #374151;
-        }
-
-        @media (max-width: 1200px) {
-            .ai-plans-section {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .dashboard-container {
-                padding: 1rem;
-            }
-
-            .header {
-                flex-direction: column;
-                text-align: center;
-            }
-
-            .header-actions {
-                justify-content: center;
-            }
-
-            .dashboard-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .user-info h1 {
-                font-size: 1.5rem;
-            }
-
-            .targets-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width: 480px) {
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .targets-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
-</head>
-<body>
-    {% if messages %}
-        <div class="messages">
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-            {% endfor %}
+{% extends 'base_dashboard.html' %}
+
+{% block title %}Dashboard | FitTrack Pro{% endblock %}
+{% block header_title %}Welcome back, {{ request.session.user.name|default:"Athlete" }}! 🚀{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Action Bar -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-dark-800/50 backdrop-blur-md p-4 rounded-2xl border border-dark-700">
+        <div>
+            <h2 class="text-lg font-semibold text-white">Daily Tracking</h2>
+            <p class="text-sm text-gray-400">Keep up your streak and track your progress!</p>
         </div>
-    {% endif %}
-
-    <div class="dashboard-container">
-        <!-- Header -->
-        <div class="header">
-            <div class="user-info">
-                <h1>Welcome back, {{ user.name }}!</h1>
-                <p>Track your daily metrics and see your progress over time</p>
-            </div>
-            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                <div class="streak-info">
-                    <div>
-                        <div class="streak-number">{{ current_streak }}</div>
-                        <div>Day Streak</div>
-                    </div>
-                    <div style="font-size: 2rem;">🔥</div>
-                </div>
-                <div class="header-actions">
-                    <a href="{% url 'weigh_in' %}" class="add-data-btn" style="background: linear-gradient(135deg, #3b82f6, #2563eb); box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);">
-                        ⚖️ Weigh-in
-                    </a>
-                    {% if has_today_record %}
-                        <span class="add-data-btn disabled" title="You've already submitted data for today">
-                            ✅ Today's Data
-                        </span>
-                    {% else %}
-                        <a href="{% url 'form' %}" class="add-data-btn">
-                            📝 Add Data
-                        </a>
-                    {% endif %}
-                    <a href="{% url 'logout' %}" class="logout-btn">Logout</a>
-                </div>
-            </div>
-        </div>
-
-        {% if not weekly_stats %}
-            <!-- No Data Message -->
-            <div class="no-data-message">
-                <h2>🌱 Start Your Health Journey</h2>
-                <p>You haven't logged any health data yet. Start tracking your daily metrics to see beautiful insights and progress!</p>
-                <a href="{% url 'form' %}" class="add-data-btn">
-                    📝 Log Your First Entry
-                </a>
-            </div>
-        {% else %}
-            <!-- Progress Tracking Section -->
-            {% if progress_data and baseline %}
-                <div class="progress-section">
-                    <div class="progress-header">
-                        <div class="progress-title">
-                            <div class="card-icon">🎯</div>
-                            <div>
-                                <h2 class="card-title">Your Progress</h2>
-                                <p style="color: #6b7280; margin: 0;">Compared to your {{ baseline.goal|title }} goal baseline</p>
-                            </div>
-                        </div>
-                        
-                        <div class="progress-score">
-                            <div class="score-circle" style="--progress-color: {{ progress_data.progress_level.color }}; --progress-angle: {{ progress_data.overall_score|floatformat:0 }}deg;">
-                                <div class="score-value">{{ progress_data.overall_score }}%</div>
-                                <div class="score-label">Overall</div>
-                            </div>
-                            <div class="progress-level" style="background-color: {{ progress_data.progress_level.color }}20; color: {{ progress_data.progress_level.color }};">
-                                <span>{{ progress_data.progress_level.icon }}</span>
-                                <span>{{ progress_data.progress_level.level }}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Individual Metrics Progress -->
-                    <div class="metrics-grid">
-                        {% for metric_name, score in progress_data.individual_scores.items %}
-                            {% if metric_name == 'sleep' %}
-                                <div class="metric-card">
-                                    <div class="metric-header">
-                                        <span class="metric-name">😴 Sleep Hours</span>
-                                        <span class="metric-score" style="color: {% if score >= 80 %}#10b981{% elif score >= 60 %}#3b82f6{% elif score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};">{{ score|floatformat:0 }}%</span>
-                                    </div>
-                                    <div class="metric-progress">
-                                        <div class="metric-progress-bar" style="width: {{ score }}%; background-color: {% if score >= 80 %}#10b981{% elif score >= 60 %}#3b82f6{% elif score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};"></div>
-                                    </div>
-                                    <div class="metric-comparison">
-                                        <span class="current-value">Current: {{ progress_data.current_values.sleep_hours }}h</span>
-                                        <span class="target-value">Target: {{ progress_data.targets.sleep_hours }}h</span>
-                                    </div>
-                                </div>
-                            {% elif metric_name == 'sleep_quality' %}
-                                <div class="metric-card">
-                                    <div class="metric-header">
-                                        <span class="metric-name">🌟 Sleep Quality</span>
-                                        <span class="metric-score" style="color: {% if score >= 80 %}#10b981{% elif score >= 60 %}#3b82f6{% elif score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};">{{ score|floatformat:0 }}%</span>
-                                    </div>
-                                    <div class="metric-progress">
-                                        <div class="metric-progress-bar" style="width: {{ score }}%; background-color: {% if score >= 80 %}#10b981{% elif score >= 60 %}#3b82f6{% elif score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};"></div>
-                                    </div>
-                                    <div class="metric-comparison">
-                                        <span class="current-value">Current: {{ progress_data.current_values.sleep_quality }}/5</span>
-                                        <span class="target-value">Target: {{ progress_data.targets.sleep_quality }}/5</span>
-                                    </div>
-                                </div>
-                            {% elif metric_name == 'workout_consistency' %}
-                                <div class="metric-card">
-                                    <div class="metric-header">
-                                        <span class="metric-name">💪 Workout Days</span>
-                                        <span class="metric-score" style="color: {% if score >= 80 %}#10b981{% elif score >= 60 %}#3b82f6{% elif score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};">{{ score|floatformat:0 }}%</span>
-                                    </div>
-                                    <div class="metric-progress">
-                                        <div class="metric-progress-bar" style="width: {{ score }}%; background-color: {% if score >= 80 %}#10b981{% elif score >= 60 %}#3b82f6{% elif score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};"></div>
-                                    </div>
-                                    <div class="metric-comparison">
-                                        <span class="current-value">Current: {{ progress_data.current_values.active_days }}/7</span>
-                                        <span class="target-value">Target: {{ progress_data.targets.active_days }}/7</span>
-                                    </div>
-                                </div>
-                            {% elif metric_name == 'workout_duration' %}
-                                <div class="metric-card">
-                                    <div class="metric-header">
-                                        <span class="metric-name">⏱️ Workout Duration</span>
-                                        <span class="metric-score" style="color: {% if score >= 80 %}#10b981{% elif score >= 60 %}#3b82f6{% elif score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};">{{ score|floatformat:0 }}%</span>
-                                    </div>
-                                    <div class="metric-progress">
-                                        <div class="metric-progress-bar" style="width: {{ score }}%; background-color: {% if score >= 80 %}#10b981{% elif score >= 60 %}#3b82f6{% elif score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};"></div>
-                                    </div>
-                                    <div class="metric-comparison">
-                                        <span class="current-value">Current: {{ progress_data.current_values.workout_duration }}min</span>
-                                        <span class="target-value">Target: {{ progress_data.targets.workout_duration }}min</span>
-                                    </div>
-                                </div>
-                            {% elif metric_name == 'hydration' %}
-                                <div class="metric-card">
-                                    <div class="metric-header">
-                                        <span class="metric-name">💧 Hydration</span>
-                                        <span class="metric-score" style="color: {% if score >= 80 %}#10b981{% elif score >= 60 %}#3b82f6{% elif score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};">{{ score|floatformat:0 }}%</span>
-                                    </div>
-                                    <div class="metric-progress">
-                                        <div class="metric-progress-bar" style="width: {{ score }}%; background-color: {% if score >= 80 %}#10b981{% elif score >= 60 %}#3b82f6{% elif score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};"></div>
-                                    </div>
-                                    <div class="metric-comparison">
-                                        <span class="current-value">Current: {{ progress_data.current_values.water_intake }}L</span>
-                                        <span class="target-value">Target: {{ progress_data.targets.water_intake }}L</span>
-                                    </div>
-                                </div>
-                            {% elif metric_name == 'diet_quality' %}
-                                <div class="metric-card">
-                                    <div class="metric-header">
-                                        <span class="metric-name">🥗 Diet Quality</span>
-                                        <span class="metric-score" style="color: {% if score >= 80 %}#10b981{% elif score >= 60 %}#3b82f6{% elif score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};">{{ score|floatformat:0 }}%</span>
-                                    </div>
-                                    <div class="metric-progress">
-                                        <div class="metric-progress-bar" style="width: {{ score }}%; background-color: {% if score >= 80 %}#10b981{% elif score >= 60 %}#3b82f6{% elif score >= 40 %}#f59e0b{% else %}#ef4444{% endif %};"></div>
-                                    </div>
-                                    <div class="metric-comparison">
-                                        <span class="current-value">Junk Food: {{ progress_data.current_values.junk_food_level }}/4</span>
-                                        <span class="target-value">Target: ≤{{ progress_data.targets.junk_food_level }}/4</span>
-                                    </div>
-                                </div>
-                            {% endif %}
-                        {% endfor %}
-                    </div>
-
-                    <!-- Progress Trend -->
-                    {% if progress_trend %}
-                        <div class="trend-indicator">
-                            <div class="trend-arrow">
-                                {% if progress_trend.trend_direction == 'improving' %}
-                                    📈
-                                {% elif progress_trend.trend_direction == 'declining' %}
-                                    📉
-                                {% else %}
-                                    📊
-                                {% endif %}
-                            </div>
-                            <div class="trend-text">
-                                {% if progress_trend.trend_direction == 'improving' %}
-                                    Your progress is improving! Keep up the great work.
-                                {% elif progress_trend.trend_direction == 'declining' %}
-                                    Your progress needs attention. Consider adjusting your routine.
-                                {% elif progress_trend.trend_direction == 'stable' %}
-                                    Your progress is stable. Maintain your current habits.
-                                {% else %}
-                                    Start of your progress journey! Keep tracking for trends.
-                                {% endif %}
-                                ({{ progress_trend.weeks_tracked }} weeks tracked)
-                            </div>
-                        </div>
-                    {% endif %}
-                </div>
-            {% elif baseline %}
-                <!-- User has baseline but no progress yet -->
-                <div class="progress-section">
-                    <div class="progress-header">
-                        <div class="progress-title">
-                            <div class="card-icon">🎯</div>
-                            <div>
-                                <h2 class="card-title">Your {{ baseline.goal|title }} Goals</h2>
-                                <p style="color: #6b7280; margin: 0;">{{ baseline.targets.target_description }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div style="text-align: center; padding: 2rem;">
-                        <div style="background: rgba(102, 126, 234, 0.1); border-radius: 50%; width: 100px; height: 100px; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; font-size: 3rem;">
-                            📊
-                        </div>
-                        <h3 style="color: #374151; margin-bottom: 1rem;">Progress Tracking Available Soon!</h3>
-                        <p style="color: #6b7280; line-height: 1.6;">
-                            Keep logging your daily health data to see your progress compared to your baseline goals. 
-                            Progress tracking will be available once you have sufficient data.
-                        </p>
-                    </div>
-                </div>
-            {% endif %}
-
-            <!-- Quick Stats -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value">{{ weekly_stats.avg_sleep }}</div>
-                    <div class="stat-label">Avg Sleep Hours</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">{{ weekly_stats.avg_sleep_quality }}</div>
-                    <div class="stat-label">Sleep Quality (1-5)</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">{{ weekly_stats.avg_calories|floatformat:0 }}</div>
-                    <div class="stat-label">Daily Calories</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">{{ weekly_stats.avg_water }}L</div>
-                    <div class="stat-label">Water Intake</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">{{ weekly_stats.avg_workout_duration|floatformat:0 }}</div>
-                    <div class="stat-label">Workout Minutes</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">{{ weekly_stats.avg_junk_food }}</div>
-                    <div class="stat-label">Junk Food Level</div>
-                </div>
-            </div>
-
-            <!-- Main Dashboard Grid -->
-            <div class="dashboard-grid">
-                <!-- Sleep Tracking Chart -->
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-icon">😴</div>
-                        <div class="card-title">Sleep Tracking</div>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="sleepChart"></canvas>
-                    </div>
-                    <div class="insights-grid">
-                        <div class="insight-item">
-                            <div class="insight-icon">⏰</div>
-                            <div class="insight-text">{{ weekly_stats.total_days }}/7 days tracked</div>
-                        </div>
-                        <div class="insight-item">
-                            <div class="insight-icon">☀️</div>
-                            <div class="insight-text">Quality: {{ weekly_stats.avg_sleep_quality }}/5</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Daily Calories & Macros -->
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-icon">🍽️</div>
-                        <div class="card-title">Daily Nutrition</div>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="nutritionChart"></canvas>
-                    </div>
-                    <div class="mood-indicator">
-                        <span>📊</span>
-                        <span>Tracking calories and hydration</span>
-                    </div>
-                </div>
-
-                <!-- Water & Junk Food Tracking -->
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-icon">💧</div>
-                        <div class="card-title">Hydration & Diet Quality</div>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="hydrationChart"></canvas>
-                    </div>
-                    <div class="insights-grid">
-                        <div class="insight-item">
-                            <div class="insight-icon">💧</div>
-                            <div class="insight-text">Daily water: {{ weekly_stats.avg_water }}L avg</div>
-                        </div>
-                        <div class="insight-item">
-                            <div class="insight-icon">🚫</div>
-                            <div class="insight-text">Junk food: {{ weekly_stats.avg_junk_food }}/4 avg</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Workout Analysis -->
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-icon">💪</div>
-                        <div class="card-title">Workout Analysis</div>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="workoutChart"></canvas>
-                    </div>
-                    <div class="mood-indicator">
-                        <span>⚡</span>
-                        <span>Most popular: {{ weekly_stats.most_popular_workout|title }}</span>
-                    </div>
-                </div>
-
-                <!-- Summary Cards -->
-                <div class="summary-cards">
-                    <div class="summary-card">
-                        <div class="summary-title">
-                            <span>📈</span>
-                            Weekly Sleep Summary
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">Average Hours</span>
-                            <span class="metric-value">{{ weekly_stats.avg_sleep }} hrs</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">Average Quality</span>
-                            <span class="metric-value">{{ weekly_stats.avg_sleep_quality }}/5</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">Days Tracked</span>
-                            <span class="metric-value">{{ weekly_stats.total_days }}/7</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">Sleep Consistency</span>
-                            <span class="metric-value">{% if weekly_stats.avg_sleep >= 7 %}Good{% else %}Needs Improvement{% endif %}</span>
-                        </div>
-                    </div>
-
-                    <div class="summary-card">
-                        <div class="summary-title">
-                            <span>🥗</span>
-                            Nutrition Summary
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">Daily Calories</span>
-                            <span class="metric-value">{{ weekly_stats.avg_calories|floatformat:0 }} avg</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">Water Intake</span>
-                            <span class="metric-value">{{ weekly_stats.avg_water }}L avg</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">Junk Food Level</span>
-                            <span class="metric-value">{{ weekly_stats.avg_junk_food }}/4 avg</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">Diet Quality</span>
-                            <span class="metric-value">{% if weekly_stats.avg_junk_food <= 1.5 %}Excellent{% elif weekly_stats.avg_junk_food <= 2.5 %}Good{% else %}Needs Work{% endif %}</span>
-                        </div>
-                    </div>
-
-                    <div class="summary-card">
-                        <div class="summary-title">
-                            <span>💪</span>
-                            Workout Summary
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">Active Days</span>
-                            <span class="metric-value">{{ weekly_stats.active_days }}/{{ weekly_stats.total_days }} days</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">Average Duration</span>
-                            <span class="metric-value">{{ weekly_stats.avg_workout_duration|floatformat:0 }} minutes</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">Most Popular</span>
-                            <span class="metric-value">{{ weekly_stats.most_popular_workout|title }}</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">Consistency</span>
-                            <span class="metric-value">{% if weekly_stats.active_days >= 5 %}Excellent{% elif weekly_stats.active_days >= 3 %}Good{% else %}Needs Work{% endif %}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- AI Plans Section -->
-            {% if combined_plan %}
-                
-                <!-- NEW SYSTEM CONTEXT SUMMARY -->
-                {% if combined_plan.context %}
-                <div class="card" style="margin-bottom: 2rem;">
-                    <div class="card-header">
-                        <div class="card-icon">🧠</div>
-                        <div class="card-title">AI System Context</div>
-                    </div>
-                    <p style="color: #374151; font-weight: 500; font-size: 1.1rem; margin-bottom: 1rem;">
-                        <strong>Predicted Fitness State:</strong> {{ combined_plan.context.fitness_state }} 
-                        <span class="ai-badge" style="margin-left: 10px;">{{ combined_plan.context.confidence|title }} Confidence</span>
-                    </p>
-                    <p style="color: #6b7280; font-size: 0.95rem; margin-bottom: 1rem;">
-                        {% if combined_plan.context.fitness_state == 'Recovering' %}
-                            You are in a Recovering state, meaning recent physical stress is high or sleep/nutrition are low. Your plans are lighter this week to let your body heal.
-                        {% elif combined_plan.context.fitness_state == 'Overtraining' %}
-                            You are Overtraining. Your training volume is exceeding your body's ability to recover. Activity levels have drastically reduced this week.
-                        {% elif combined_plan.context.fitness_state == 'Plateauing' %}
-                            You are Plateauing. Your body has adapted to your current routine. Your plans introduce some variations or slight calorie modifications to break the plateau.
-                        {% else %}
-                            You are Progressing nicely! Your plan maintains a steady and effective challenge to continue your improvements.
-                        {% endif %}
-                    </p>
-                    
-                    <div style="display: flex; gap: 2rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
-                        <div style="flex: 1; min-width: 200px; background: rgba(16, 185, 129, 0.1); padding: 1rem; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.2);">
-                            <h5 style="color: #065f46; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 700;">Goal Alignment</h5>
-                            <div style="font-size: 1.2rem; font-weight: 800; color: #047857;">{{ combined_plan.context.goal_alignment|title }}</div>
-                            <small style="color: #065f46; font-size: 0.8rem;">Based on your recent weight trends and your stated goal.</small>
-                        </div>
-                    </div>
-
-                    <h5 style="color: #374151; margin-bottom: 1rem; font-size: 1rem;">System Core Scores</h5>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                        <!-- Recovery Score -->
-                        <div style="background: rgba(102, 126, 234, 0.05); padding: 1rem; border-radius: 10px;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                <span style="font-size: 0.85rem; font-weight: 600; color: #374151;">Recovery</span>
-                                <span style="font-size: 0.85rem; color: #667eea;">{{ combined_plan.context.fuzzy_scores.recovery_score|floatformat:2 }}</span>
-                            </div>
-                            <div class="progress-indicator"><div class="progress-bar" style="width: calc({{ combined_plan.context.fuzzy_scores.recovery_score }} * 100%);"></div></div>
-                        </div>
-                        <!-- Nutrition Adherence -->
-                        <div style="background: rgba(102, 126, 234, 0.05); padding: 1rem; border-radius: 10px;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                <span style="font-size: 0.85rem; font-weight: 600; color: #374151;">Nutrition</span>
-                                <span style="font-size: 0.85rem; color: #667eea;">{{ combined_plan.context.fuzzy_scores.nutrition_adherence|floatformat:2 }}</span>
-                            </div>
-                            <div class="progress-indicator"><div class="progress-bar" style="width: calc({{ combined_plan.context.fuzzy_scores.nutrition_adherence }} * 100%);"></div></div>
-                        </div>
-                        <!-- Training Load -->
-                        <div style="background: rgba(102, 126, 234, 0.05); padding: 1rem; border-radius: 10px;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                <span style="font-size: 0.85rem; font-weight: 600; color: #374151;">Training Load</span>
-                                <span style="font-size: 0.85rem; color: #667eea;">{{ combined_plan.context.fuzzy_scores.training_load|floatformat:2 }}</span>
-                            </div>
-                            <div class="progress-indicator"><div class="progress-bar" style="width: calc({{ combined_plan.context.fuzzy_scores.training_load }} * 100%);"></div></div>
-                        </div>
-                        <!-- Hydration -->
-                        <div style="background: rgba(102, 126, 234, 0.05); padding: 1rem; border-radius: 10px;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                <span style="font-size: 0.85rem; font-weight: 600; color: #374151;">Hydration</span>
-                                <span style="font-size: 0.85rem; color: #667eea;">{{ combined_plan.context.fuzzy_scores.hydration_score|floatformat:2 }}</span>
-                            </div>
-                            <div class="progress-indicator"><div class="progress-bar" style="width: calc({{ combined_plan.context.fuzzy_scores.hydration_score }} * 100%);"></div></div>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-
-                <div class="ai-plans-section">
-                    <!-- Diet Plan Card -->
-                    <div class="plan-card">
-                        <div class="plan-header">
-                            <div class="plan-title-group">
-                                <div class="card-icon">🥗</div>
-                                <div class="card-title">AI Diet Plan</div>
-                            </div>
-                            <div class="ai-badge">AI Powered</div>
-                        </div>
-
-                        <!-- Add this section to show which week the plan is for -->
-{% if combined_plan and plan_week_info %}
-<div class="plan-week-info mb-3">
-    <div class="alert alert-info">
-        <h6>Current Plan Week</h6>
-        <p class="mb-0">
-            <strong>Week:</strong> {{ plan_week_info.start_date }} to {{ plan_week_info.end_date }}
-            <br>
-            <small class="text-muted">Generated on: {{ plan_week_info.generated_at }}</small>
-        </p>
-    </div>
-</div>
-{% endif %}
-
-{% if not combined_plan %}
-<div class="alert alert-warning">
-    <h6>No Weekly Plan Available</h6>
-    <p class="mb-0">Weekly plans are generated every Sunday night. Please check back after Sunday 11:30 PM for your personalized plan.</p>
-</div>
-{% endif %}
-                        
-                        <div class="plan-type-badge">
-                            📋 {{ combined_plan.diet_plan.plan_style|title }} Plan
-                        </div>
-                        
-                        <p style="color: #374151; line-height: 1.6; margin-bottom: 1rem; font-size: 0.95rem;">
-                            {{ combined_plan.diet_plan.headline }}
-                        </p>
-                        
-                        <div class="plan-overview">
-                            <div class="plan-overview-title">
-                                Based on your weekly averages:
-                            </div>
-                            <div class="plan-overview-grid">
-                                <div>Sleep: {{ weekly_stats.avg_sleep }}h</div>
-                                <div>Calories: {{ weekly_stats.avg_calories|floatformat:0 }}</div>
-                                <div>Water: {{ weekly_stats.avg_water }}L</div>
-                                <div>Active: {{ weekly_stats.active_days }}/7 days</div>
-                            </div>
-                        </div>
-                        
-                        <h4 style="color: #374151; font-size: 1rem; margin-bottom: 1rem; font-weight: 600;">Daily Targets</h4>
-                        <div class="targets-grid">
-                            <div class="mini-target-card" style="background: rgba(102, 126, 234, 0.05); border-radius: 12px; padding: 1rem; text-align: center;">
-                                <div style="font-size: 1.2rem; font-weight: 700; color: #667eea;">{{ combined_plan.diet_plan.targets.calories_kcal }}</div>
-                                <div style="font-size: 0.75rem; color: #6b7280;">Calories</div>
-                            </div>
-                            
-                            <div class="mini-target-card" style="background: rgba(102, 126, 234, 0.05); border-radius: 12px; padding: 1rem; text-align: center;">
-                                <div style="font-size: 1.2rem; font-weight: 700; color: #667eea;">{{ combined_plan.diet_plan.targets.protein_g }}g</div>
-                                <div style="font-size: 0.75rem; color: #6b7280;">Protein</div>
-                            </div>
-                            
-                            <div class="mini-target-card" style="background: rgba(102, 126, 234, 0.05); border-radius: 12px; padding: 1rem; text-align: center;">
-                                <div style="font-size: 1.2rem; font-weight: 700; color: #667eea;">{{ combined_plan.diet_plan.targets.water_l }}L</div>
-                                <div style="font-size: 0.75rem; color: #6b7280;">Water</div>
-                            </div>
-                            
-                            <div class="mini-target-card" style="background: rgba(102, 126, 234, 0.05); border-radius: 12px; padding: 1rem; text-align: center;">
-                                <div style="font-size: 1.2rem; font-weight: 700; color: #667eea;">{{ combined_plan.diet_plan.targets.carbs_g }}g</div>
-                                <div style="font-size: 0.75rem; color: #6b7280;">Carbs</div>
-                            </div>
-                            
-                            <div class="mini-target-card" style="background: rgba(102, 126, 234, 0.05); border-radius: 12px; padding: 1rem; text-align: center;">
-                                <div style="font-size: 1.2rem; font-weight: 700; color: #667eea;">{{ combined_plan.diet_plan.targets.sleep_h }}h</div>
-                                <div style="font-size: 0.75rem; color: #6b7280;">Sleep</div>
-                            </div>
-                            
-                            <div class="mini-target-card" style="background: linear-gradient(135deg, #10b981, #059669); border-radius: 12px; padding: 1rem; text-align: center; color: white;">
-                                <div style="font-size: 0.9rem; font-weight: 600;">Updated Weekly</div>
-                                <div style="font-size: 0.7rem; opacity: 0.9;">Keep tracking!</div>
-                            </div>
-                        </div>
-                        
-                        <a href="{% url 'diet_plan' %}" class="view-plan-btn">
-                            📋 View Full Diet Plan
-                        </a>
-                    </div>
-
-                    <!-- Workout Plan Card -->
-                    <div class="plan-card">
-                        <div class="plan-header">
-                            <div class="plan-title-group">
-                                <div class="card-icon">💪</div>
-                                <div class="card-title">AI Workout Plan</div>
-                            </div>
-                            <div class="ai-badge">AI Powered</div>
-                        </div>
-
-                        <!-- Add this section to show which week the plan is for -->
-{% if combined_plan and plan_week_info %}
-<div class="plan-week-info mb-3">
-    <div class="alert alert-info">
-        <h6>Current Plan Week</h6>
-        <p class="mb-0">
-            <strong>Week:</strong> {{ plan_week_info.start_date }} to {{ plan_week_info.end_date }}
-            <br>
-            <small class="text-muted">Generated on: {{ plan_week_info.generated_at }}</small>
-        </p>
-    </div>
-</div>
-{% endif %}
-
-{% if not combined_plan %}
-<div class="alert alert-warning">
-    <h6>No Weekly Plan Available</h6>
-    <p class="mb-0">Weekly plans are generated every Sunday night. Please check back after Sunday 11:30 PM for your personalized plan.</p>
-</div>
-{% endif %}
-                        
-                        <div class="plan-type-badge">
-                            🏋️ {{ combined_plan.context.fitness_state|title }} Program
-                        </div>
-                        
-                        <p style="color: #374151; line-height: 1.6; margin-bottom: 1rem; font-size: 0.95rem;">
-                            Personalized workout schedule: {{ combined_plan.workout_plan.advice }}
-                        </p>
-                        
-                        <div class="plan-overview">
-                            <div class="plan-overview-title">
-                                This week's focus:
-                            </div>
-                            <div style="color: #374151; font-size: 0.9rem; font-weight: 500;">
-                                {{ combined_plan.workout_plan.predicted_label|title }} training optimized for your current fitness level
-                            </div>
-                        </div>
-                        
-                        <h4 style="color: #374151; font-size: 1rem; margin-bottom: 1rem; font-weight: 600;">Weekly Schedule</h4>
-                        <div class="workout-schedule">
-                            {% for day, workout in combined_plan.workout_plan.weekly_schedule.items %}
-                                <div class="day-item">
-                                    <span class="day-name">{{ day|title }}</span>
-                                    <span class="workout-type">{{ workout }}</span>
-                                </div>
-                            {% endfor %}
-                        </div>
-                        
-                        <a href="{% url 'workout_plan' %}" class="view-plan-btn">
-                            🏋️ View Full Workout Plan
-                        </a>
-                        
-                        
-                    </div>
-                </div>
+        <div class="flex items-center gap-3 w-full sm:w-auto">
+            {% if has_today_record %}
+            <button disabled class="w-full sm:w-auto px-5 py-2.5 bg-gray-700 text-gray-400 font-medium rounded-xl border border-gray-600 flex items-center justify-center gap-2 cursor-not-allowed">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                Logged Today
+            </button>
             {% else %}
-                <!-- No AI Plans Available -->
-                <div class="ai-plans-section">
-                    <div class="plan-card">
-                        <div class="plan-header">
-                            <div class="plan-title-group">
-                                <div class="card-icon">🥗</div>
-                                <div class="card-title">AI Diet Plan</div>
-                            </div>
-                        </div>
-                        
-                        <div style="text-align: center; padding: 2rem;">
-                            <div style="background: rgba(102, 126, 234, 0.1); border-radius: 50%; width: 80px; height: 80px; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; font-size: 2rem;">
-                                🤖
-                            </div>
-                            <h3 style="color: #374151; margin-bottom: 1rem;">AI Diet Plan Coming Soon!</h3>
-                            <p style="color: #6b7280; margin-bottom: 2rem; line-height: 1.6;">
-                                Keep tracking your daily health data. Once you have at least 3 days of records, 
-                                our AI will generate a personalized diet plan based on your patterns and goals.
-                            </p>
-                            <div style="background: rgba(102, 126, 234, 0.05); border-radius: 10px; padding: 1rem; display: inline-block;">
-                                <div style="font-size: 0.9rem; color: #667eea; font-weight: 600;">
-                                    Progress: {{ total_records }}/3 days needed
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="plan-card">
-                        <div class="plan-header">
-                            <div class="plan-title-group">
-                                <div class="card-icon">💪</div>
-                                <div class="card-title">AI Workout Plan</div>
-                            </div>
-                        </div>
-                        
-                        <div style="text-align: center; padding: 2rem;">
-                            <div style="background: rgba(102, 126, 234, 0.1); border-radius: 50%; width: 80px; height: 80px; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; font-size: 2rem;">
-                                🏋️
-                            </div>
-                            <h3 style="color: #374151; margin-bottom: 1rem;">AI Workout Plan Coming Soon!</h3>
-                            <p style="color: #6b7280; margin-bottom: 2rem; line-height: 1.6;">
-                                Continue logging your workouts and health metrics. Our AI will create a 
-                                personalized workout schedule tailored to your fitness level and goals.
-                            </p>
-                            <div style="background: rgba(102, 126, 234, 0.05); border-radius: 10px; padding: 1rem; display: inline-block;">
-                                <div style="font-size: 0.9rem; color: #667eea; font-weight: 600;">
-                                    Progress: {{ total_records }}/3 days needed
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <a href="{% url 'form' %}" class="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-medium rounded-xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all hover:-translate-y-0.5">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                Log Health Data
+            </a>
             {% endif %}
+        </div>
+    </div>
+
+    <!-- Quick Stats Grid -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <!-- Streak Card -->
+        <div class="bg-gradient-to-br from-electric-600 to-electric-800 rounded-2xl p-4 shadow-lg border border-electric-500/30 flex flex-col justify-between relative overflow-hidden group">
+            <div class="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-xl group-hover:bg-white/20 transition-all duration-500"></div>
+            <div class="text-electric-200 text-sm font-medium mb-2 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"></path></svg>
+                Current Streak
+            </div>
+            <div class="flex items-end gap-2 text-white">
+                <span class="text-4xl font-bold tracking-tight">{{ current_streak }}</span>
+                <span class="text-electric-200 mb-1 font-medium">Days</span>
+            </div>
+        </div>
+
+        {% if weekly_stats %}
+        <!-- Avg Sleep -->
+        <div class="bg-dark-800 rounded-2xl p-4 border border-dark-700 shadow-sm flex flex-col justify-between hover:border-dark-600 transition-colors">
+            <div class="text-gray-400 text-sm font-medium mb-2 flex items-center gap-2">
+                <span class="p-1 rounded bg-indigo-500/10 text-indigo-400"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg></span>
+                Avg Sleep
+            </div>
+            <div class="flex items-end gap-2 text-white">
+                <span class="text-3xl font-bold tracking-tight">{{ weekly_stats.avg_sleep }}</span>
+                <span class="text-gray-500 mb-1 font-medium text-sm">hrs</span>
+            </div>
+        </div>
+
+        <!-- Avg Calories -->
+        <div class="bg-dark-800 rounded-2xl p-4 border border-dark-700 shadow-sm flex flex-col justify-between hover:border-dark-600 transition-colors">
+            <div class="text-gray-400 text-sm font-medium mb-2 flex items-center gap-2">
+                <span class="p-1 rounded bg-orange-500/10 text-orange-400"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></span>
+                Avg Calories
+            </div>
+            <div class="flex items-end gap-2 text-white">
+                <span class="text-3xl font-bold tracking-tight">{{ weekly_stats.avg_calories|floatformat:0 }}</span>
+                <span class="text-gray-500 mb-1 font-medium text-sm">kcal</span>
+            </div>
+        </div>
+
+        <!-- Avg Water -->
+        <div class="bg-dark-800 rounded-2xl p-4 border border-dark-700 shadow-sm flex flex-col justify-between hover:border-dark-600 transition-colors">
+            <div class="text-gray-400 text-sm font-medium mb-2 flex items-center gap-2">
+                <span class="p-1 rounded bg-cyan-500/10 text-cyan-400"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg></span>
+                Water Intake
+            </div>
+            <div class="flex items-end gap-2 text-white">
+                <span class="text-3xl font-bold tracking-tight">{{ weekly_stats.avg_water }}</span>
+                <span class="text-gray-500 mb-1 font-medium text-sm">L</span>
+            </div>
+        </div>
+        {% else %}
+        <!-- Empty stats mapping -->
+        <div class="col-span-3 bg-dark-800/50 rounded-2xl border border-dashed border-dark-600 flex items-center justify-center p-6">
+            <p class="text-gray-500 text-center">Log more data to unlock your weekly average insights!</p>
+        </div>
         {% endif %}
     </div>
 
-    {% if weekly_stats %}
-    <script>
-        // Get chart data from Django context
-const chartData = {{ chart_data|safe }};
-
-console.log('Chart data received:', chartData); // Debug log
-
-// Chart.js configuration
-Chart.defaults.font.family = "'Inter', sans-serif";
-Chart.defaults.color = '#6b7280';
-
-// Chart.js default configuration for handling null values
-Chart.defaults.plugins.legend.display = true;
-Chart.defaults.elements.point.radius = 4;
-Chart.defaults.elements.point.hoverRadius = 6;
-
-// Sleep Hours & Quality Chart
-const sleepCtx = document.getElementById('sleepChart').getContext('2d');
-new Chart(sleepCtx, {
-    type: 'line',
-    data: {
-        labels: chartData.dates || [],
-        datasets: [{
-            label: 'Sleep Hours',
-            data: chartData.sleep_hours || [],
-            borderColor: '#667eea',
-            backgroundColor: 'rgba(102, 126, 234, 0.1)',
-            borderWidth: 3,
-            fill: true,
-            tension: 0.4,
-            yAxisID: 'y',
-            spanGaps: true // Connect line across null values
-        }, {
-            label: 'Sleep Quality (1-5)',
-            data: chartData.sleep_quality || [],
-            borderColor: '#764ba2',
-            backgroundColor: 'rgba(118, 75, 162, 0.1)',
-            borderWidth: 3,
-            fill: false,
-            tension: 0.4,
-            yAxisID: 'y1',
-            spanGaps: true
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { position: 'top' },
-            tooltip: {
-                mode: 'index',
-                intersect: false,
-                callbacks: {
-                    beforeBody: function(tooltipItems) {
-                        // Check if all values are null/undefined
-                        const hasData = tooltipItems.some(item => 
-                            item.raw !== null && item.raw !== undefined
-                        );
-                        if (!hasData) {
-                            return ['No data recorded for this day'];
-                        }
-                        return [];
-                    }
-                }
-            }
-        },
-        scales: {
-            y: {
-                type: 'linear',
-                display: true,
-                position: 'left',
-                min: 0,
-                max: 12,
-                title: { display: true, text: 'Hours' },
-                grid: { color: 'rgba(0,0,0,0.1)' }
-            },
-            y1: {
-                type: 'linear',
-                display: true,
-                position: 'right',
-                min: 1,
-                max: 5,
-                title: { display: true, text: 'Quality (1-5)' },
-                grid: { drawOnChartArea: false }
-            }
-        },
-        interaction: {
-            mode: 'index',
-            intersect: false,
-        }
-    }
-});
-
-// Nutrition - Calories & Water
-const nutritionCtx = document.getElementById('nutritionChart').getContext('2d');
-new Chart(nutritionCtx, {
-    type: 'line',
-    data: {
-        labels: chartData.dates || [],
-        datasets: [{
-            label: 'Total Calories',
-            data: chartData.calories || [],
-            borderColor: '#667eea',
-            backgroundColor: 'rgba(102, 126, 234, 0.1)',
-            borderWidth: 3,
-            fill: true,
-            tension: 0.4,
-            yAxisID: 'y',
-            spanGaps: true
-        }, {
-            label: 'Water (L)',
-            data: chartData.water_intake || [],
-            borderColor: '#10b981',
-            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-            borderWidth: 2,
-            fill: false,
-            tension: 0.4,
-            yAxisID: 'y1',
-            spanGaps: true
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { position: 'top' },
-            tooltip: {
-                mode: 'index',
-                intersect: false,
-                callbacks: {
-                    beforeBody: function(tooltipItems) {
-                        const hasData = tooltipItems.some(item => 
-                            item.raw !== null && item.raw !== undefined
-                        );
-                        if (!hasData) {
-                            return ['No data recorded for this day'];
-                        }
-                        return [];
-                    }
-                }
-            }
-        },
-        scales: {
-            y: {
-                beginAtZero: true,
-                title: { display: true, text: 'Calories' },
-                grid: { color: 'rgba(0,0,0,0.1)' }
-            },
-            y1: {
-                type: 'linear',
-                display: true,
-                position: 'right',
-                min: 0,
-                max: 5,
-                title: { display: true, text: 'Water (L)' },
-                grid: { drawOnChartArea: false }
-            }
-        },
-        interaction: {
-            mode: 'index',
-            intersect: false,
-        }
-    }
-});
-
-// Water Intake & Junk Food Level
-const hydrationCtx = document.getElementById('hydrationChart').getContext('2d');
-new Chart(hydrationCtx, {
-    type: 'bar',
-    data: {
-        labels: chartData.dates || [],
-        datasets: [{
-            label: 'Water Intake (L)',
-            data: chartData.water_intake || [],
-            backgroundColor: 'rgba(59, 130, 246, 0.8)',
-            borderColor: '#3b82f6',
-            borderWidth: 1,
-            yAxisID: 'y'
-        }, {
-            label: 'Junk Food Level (0-4)',
-            data: chartData.junk_food_levels || [],
-            backgroundColor: 'rgba(239, 68, 68, 0.8)',
-            borderColor: '#ef4444',
-            borderWidth: 1,
-            yAxisID: 'y1'
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { position: 'top' },
-            tooltip: {
-                callbacks: {
-                    beforeBody: function(tooltipItems) {
-                        const hasData = tooltipItems.some(item => 
-                            item.raw !== null && item.raw !== undefined
-                        );
-                        if (!hasData) {
-                            return ['No data recorded for this day'];
-                        }
-                        return [];
-                    }
-                }
-            }
-        },
-        scales: {
-            y: {
-                type: 'linear',
-                display: true,
-                position: 'left',
-                min: 0,
-                max: 5,
-                title: { display: true, text: 'Water (L)' },
-                grid: { color: 'rgba(0,0,0,0.1)' }
-            },
-            y1: {
-                type: 'linear',
-                display: true,
-                position: 'right',
-                min: 0,
-                max: 4,
-                title: { display: true, text: 'Junk Food Level' },
-                grid: { drawOnChartArea: false }
-            }
-        }
-    }
-});
-
-// Workout Duration
-const workoutCtx = document.getElementById('workoutChart').getContext('2d');
-new Chart(workoutCtx, {
-    type: 'bar',
-    data: {
-        labels: chartData.dates || [],
-        datasets: [{
-            label: 'Workout Duration (minutes)',
-            data: chartData.workout_duration || [],
-            backgroundColor: 'rgba(102, 126, 234, 0.8)',
-            borderColor: '#667eea',
-            borderWidth: 1
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { position: 'top' },
-            tooltip: {
-                callbacks: {
-                    beforeBody: function(tooltipItems) {
-                        const hasData = tooltipItems.some(item => 
-                            item.raw !== null && item.raw !== undefined && item.raw > 0
-                        );
-                        if (!hasData) {
-                            return ['No workout recorded for this day'];
-                        }
-                        return [];
-                    }
-                }
-            }
-        },
-        scales: {
-            y: { 
-                beginAtZero: true,
-                title: { display: true, text: 'Minutes' },
-                grid: { color: 'rgba(0,0,0,0.1)' }
-            }
-        }
-    }
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-            const progressCircle = document.querySelector('.score-circle');
-            if (progressCircle) {
-                const finalScore = {{ progress_data.overall_score|default:0 }};
-                let currentScore = 0;
-                const increment = finalScore / 50;
-                
-                function animateProgress() {
-                    if (currentScore < finalScore) {
-                        currentScore += increment;
-                        const angle = (currentScore / 100) * 360;
-                        progressCircle.style.setProperty('--progress-angle', `${angle}deg`);
-                        requestAnimationFrame(animateProgress);
-                    }
-                }
-                
-                setTimeout(animateProgress, 500);
-            }
-
-            // Animate metric progress bars
-            const metricBars = document.querySelectorAll('.metric-progress-bar');
-            metricBars.forEach((bar, index) => {
-                const width = bar.style.width;
-                bar.style.width = '0%';
-                setTimeout(() => {
-                    bar.style.width = width;
-                }, 800 + (index * 100));
-            });
-        });
-
-// Add interactive animations
-document.querySelectorAll('.card').forEach(card => {
-    card.addEventListener('mouseenter', function() {
-        this.style.transform = 'translateY(-5px) scale(1.02)';
-    });
-    
-    card.addEventListener('mouseleave', function() {
-        this.style.transform = 'translateY(0) scale(1)';
-    });
-});
-
-// Add some dynamic updates
-setInterval(() => {
-    const streakElement = document.querySelector('.streak-number');
-    if (streakElement && Math.random() > 0.95) {
-        streakElement.style.transform = 'scale(1.1)';
-        setTimeout(() => {
-            streakElement.style.transform = 'scale(1)';
-        }, 200);
-    }
-}, 3000);
-
-// Debug: Log chart data to console for troubleshooting
-console.log('Charts initialized with data:', {
-    dates: chartData.dates,
-    sleep_hours: chartData.sleep_hours,
-    sleep_quality: chartData.sleep_quality,
-    calories: chartData.calories,
-    water_intake: chartData.water_intake,
-    workout_duration: chartData.workout_duration,
-    junk_food_levels: chartData.junk_food_levels
-});
-    </script>
+    {% if weekly_stats and progress_data %}
+    <!-- AI Status Assessment (Progress Ring) -->
+    <div class="bg-dark-800 rounded-2xl border border-dark-700 shadow-lg p-6">
+        <h3 class="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+            <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            Weekly Goal Progress
+        </h3>
+        
+        <div class="flex flex-col md:flex-row items-center gap-8 md:gap-12 pl-4">
+            <!-- CSS Trick Progress Ring -->
+            <div class="relative w-32 h-32 md:w-40 md:h-40 rounded-full flex items-center justify-center progress-ring from-emerald-500 to-transparent bg-dark-900 shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]" 
+                 style="--progress: {{ progress_data.overall_score }}%;">
+                <div class="absolute inset-2 bg-dark-800 rounded-full flex flex-col items-center justify-center shadow-lg border border-dark-700">
+                    <span class="text-3xl font-bold text-white">{{ progress_data.overall_score|default:0 }}</span>
+                    <span class="text-xs text-uppercase text-gray-500 font-semibold tracking-wider">Score</span>
+                </div>
+            </div>
+            
+            <div class="flex-1 space-y-4 w-full">
+                <!-- Sub-progress bars -->
+                <div class="space-y-4">
+                    {% for metric, stat in progress_data.individual_scores.items %}
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-gray-300 capitalize font-medium">{{ metric|title }} Control</span>
+                            <span class="text-gray-400">{{ stat.score|floatformat:0 }}%</span>
+                        </div>
+                        <div class="w-full bg-dark-900 rounded-full h-2.5 border border-dark-700">
+                            <div class="bg-electric-500 h-2.5 rounded-full" style="width: {{ stat.score }}%"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
     {% endif %}
 
-    <script>
-        // Auto-hide messages after 5 seconds
-        setTimeout(() => {
-            const messages = document.querySelector('.messages');
-            if (messages) {
-                messages.style.opacity = '0';
-                setTimeout(() => messages.remove(), 300);
+    <!-- Charts Area -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-dark-800 p-5 rounded-2xl border border-dark-700">
+            <h3 class="text-white font-medium mb-4">Sleep & Recovery</h3>
+            <div class="h-64 relative w-full">
+                <canvas id="sleepChart"></canvas>
+            </div>
+        </div>
+
+        <div class="bg-dark-800 p-5 rounded-2xl border border-dark-700">
+            <h3 class="text-white font-medium mb-4">Nutrition & Hydration</h3>
+            <div class="h-64 relative w-full">
+                <canvas id="nutritionChart"></canvas>
+            </div>
+        </div>
+
+        <div class="bg-dark-800 p-5 rounded-2xl border border-dark-700">
+            <h3 class="text-white font-medium mb-4">Daily Hydration Map</h3>
+            <div class="h-64 relative w-full">
+                <canvas id="hydrationChart"></canvas>
+            </div>
+        </div>
+
+        <div class="bg-dark-800 p-5 rounded-2xl border border-dark-700">
+            <h3 class="text-white font-medium mb-4">Workout Durations</h3>
+            <div class="h-64 relative w-full">
+                <canvas id="workoutChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    Chart.defaults.color = '#9ca3af';
+    Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+    Chart.defaults.font.family = 'Inter';
+
+    const chartData = JSON.parse('{{ chart_data|escapejs }}' || '{}');
+
+    if (chartData.dates && chartData.dates.length > 0) {
+        
+        // --- Sleep Chart ---
+        new Chart(document.getElementById('sleepChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: chartData.dates,
+                datasets: [{
+                    label: 'Sleep Hours',
+                    data: chartData.sleep_hours,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    x: { grid: { display: false } }
+                }
             }
-        }, 5000);
-    </script>
-</body>
-</html>
+        });
+
+        // --- Nutrition Chart ---
+        new Chart(document.getElementById('nutritionChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: chartData.dates,
+                datasets: [{
+                    label: 'Calories',
+                    data: chartData.calories,
+                    backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // Add Hydration & Workout logic...
+        new Chart(document.getElementById('hydrationChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: chartData.dates,
+                datasets: [{
+                    label: 'Water Intake (L)',
+                    data: chartData.water_intake,
+                    borderColor: '#06b6d4',
+                    backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true }, x: { grid: { display: false } } } }
+        });
+
+        new Chart(document.getElementById('workoutChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: chartData.dates,
+                datasets: [{
+                    label: 'Workout Min',
+                    data: chartData.workout_duration,
+                    backgroundColor: 'rgba(139, 92, 246, 0.8)',
+                    borderRadius: 4
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true }, x: { grid: { display: false } } } }
+        });
+
+    }
+</script>
+{% endblock %}

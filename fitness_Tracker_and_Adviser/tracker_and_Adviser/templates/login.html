@@ -1,395 +1,97 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | FitTrack Pro</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+{% extends 'base_auth.html' %}
+{% load static %}
 
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            position: relative;
-            overflow: hidden;
-        }
+{% block title %}Login | FitTrack Pro{% endblock %}
 
-        /* Animated background elements */
-        body::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
-            background-size: 50px 50px;
-            animation: float 20s linear infinite;
-            z-index: 1;
-        }
-
-        @keyframes float {
-            0% { transform: translate(0, 0) rotate(0deg); }
-            100% { transform: translate(-50px, -50px) rotate(360deg); }
-        }
-
-        .container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            padding: 3rem 2.5rem;
-            border-radius: 24px;
-            box-shadow: 
-                0 25px 50px rgba(0, 0, 0, 0.15),
-                0 0 0 1px rgba(255, 255, 255, 0.1);
-            width: 100%;
-            max-width: 420px;
-            position: relative;
-            z-index: 2;
-            transform: translateY(0);
-            animation: slideUp 0.8s ease-out;
-        }
-
-        @keyframes slideUp {
-            from { 
-                opacity: 0; 
-                transform: translateY(30px); 
-            }
-            to { 
-                opacity: 1; 
-                transform: translateY(0); 
-            }
-        }
-
-        .logo {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        .logo-icon {
-            width: 64px;
-            height: 64px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 16px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 1rem;
-            color: white;
-            font-size: 24px;
-            font-weight: bold;
-            animation: pulse 2s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-
-        h1 {
-            color: #1a1a1a;
-            font-size: 2rem;
-            font-weight: 700;
-            text-align: center;
-            margin-bottom: 0.5rem;
-        }
-
-        .subtitle {
-            color: #6b7280;
-            text-align: center;
-            margin-bottom: 2.5rem;
-            font-size: 0.95rem;
-        }
-
-        .messages {
-            margin-bottom: 1.5rem;
-        }
-
-        .messages .error {
-            background: #fee2e2;
-            color: #dc2626;
-            padding: 0.75rem 1rem;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            border: 1px solid #fecaca;
-        }
-
-        .messages .success {
-            background: #dcfce7;
-            color: #16a34a;
-            padding: 0.75rem 1rem;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            border: 1px solid #bbf7d0;
-        }
-
-        .form-group {
-            position: relative;
-            margin-bottom: 1.5rem;
-        }
-
-        .form-label {
-            display: block;
-            color: #374151;
-            font-size: 0.875rem;
-            font-weight: 500;
-            margin-bottom: 0.5rem;
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 1rem 1.25rem;
-            background: #f9fafb;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            outline: none;
-        }
-
-        .form-input:focus {
-            background: white;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-            transform: translateY(-1px);
-        }
-
-        .form-input::placeholder {
-            color: #9ca3af;
-        }
-
-        .password-toggle {
-            position: absolute;
-            right: 1rem;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            color: #6b7280;
-            cursor: pointer;
-            padding: 0.5rem;
-            border-radius: 6px;
-            transition: color 0.2s ease;
-        }
-
-        .password-toggle:hover {
-            color: #374151;
-        }
-
-        .forgot-password {
-            text-align: right;
-            margin-bottom: 2rem;
-        }
-
-        .forgot-password a {
-            color: #667eea;
-            text-decoration: none;
-            font-size: 0.875rem;
-            font-weight: 500;
-            transition: color 0.2s ease;
-        }
-
-        .forgot-password a:hover {
-            color: #5a67d8;
-        }
-
-        .login-btn {
-            width: 100%;
-            padding: 1rem;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            font-size: 1rem;
-            font-weight: 600;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 1.5rem;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .login-btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            transition: left 0.5s ease;
-        }
-
-        .login-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-        }
-
-        .login-btn:hover::before {
-            left: 100%;
-        }
-
-        .login-btn:active {
-            transform: translateY(0);
-        }
-
-        .signup-link {
-            text-align: center;
-            color: #6b7280;
-            font-size: 0.95rem;
-        }
-
-        .signup-link a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 600;
-            transition: color 0.2s ease;
-        }
-
-        .signup-link a:hover {
-            color: #5a67d8;
-        }
-
-        /* Loading state */
-        .login-btn.loading {
-            pointer-events: none;
-            opacity: 0.8;
-        }
-
-        .login-btn.loading::after {
-            content: '';
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            border: 2px solid transparent;
-            border-top: 2px solid white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Responsive design */
-        @media (max-width: 480px) {
-            .container {
-                margin: 1rem;
-                padding: 2rem 1.5rem;
-            }
-            
-            h1 {
-                font-size: 1.75rem;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="logo">
-            <div class="logo-icon">💪</div>
-            <h1>FitTrack Pro</h1>
-            <p class="subtitle">Track your fitness journey with precision</p>
+{% block content %}
+<div class="relative w-full max-w-md mx-auto">
+    <!-- Glassmorphism Card -->
+    <div class="bg-dark-800/60 backdrop-blur-xl border border-dark-700/50 p-8 rounded-3xl shadow-2xl relative z-10">
+        
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 bg-gradient-to-br from-emerald-400 to-electric-600 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-4 shadow-lg shadow-emerald-500/20 animate-[pulse_3s_ease-in-out_infinite]">
+                💪
+            </div>
+            <h1 class="text-3xl font-bold tracking-tight text-white mb-2">Welcome Back</h1>
+            <p class="text-gray-400">Track your fitness journey with precision</p>
         </div>
 
-        <!-- Django Messages -->
-        {% if messages %}
-        <div class="messages">
-            {% for message in messages %}
-                <div class="{% if message.tags %}{{ message.tags }}{% endif %}">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        <form method="POST" id="loginForm">
+        <form method="POST" id="loginForm" class="space-y-5">
             {% csrf_token %}
-            <div class="form-group">
-                <label class="form-label" for="email">Email Address</label>
-                <input 
-                    type="email" 
-                    id="email" 
-                    name="email"
-                    class="form-input" 
-                    placeholder="Enter your email"
-                    required 
-                />
+            
+            <div class="space-y-1">
+                <label class="block text-sm font-medium text-gray-300" for="email">Email Address</label>
+                <div class="relative group">
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email"
+                        class="w-full px-4 py-3 bg-dark-900/50 border border-dark-700 rounded-xl text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all group-hover:border-dark-600"
+                        placeholder="name@example.com"
+                        required 
+                    />
+                </div>
             </div>
 
-            <div class="form-group">
-                <label class="form-label" for="password">Password</label>
-                <div style="position: relative;">
+            <div class="space-y-1">
+                <div class="flex items-center justify-between">
+                    <label class="block text-sm font-medium text-gray-300" for="password">Password</label>
+                    <a href="#" class="text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors">Forgot password?</a>
+                </div>
+                <div class="relative group">
                     <input 
                         type="password" 
                         id="password" 
                         name="password"
-                        class="form-input" 
-                        placeholder="Enter your password"
+                        class="w-full px-4 py-3 bg-dark-900/50 border border-dark-700 rounded-xl text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all group-hover:border-dark-600 pr-12"
+                        placeholder="••••••••"
                         required 
                     />
-                    <button type="button" class="password-toggle" onclick="togglePassword()">
-                        👁️
+                    <button type="button" onclick="togglePassword()" class="absolute inset-y-0 right-0 px-4 text-gray-500 hover:text-gray-300 flex items-center justify-center transition-colors">
+                        <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
                     </button>
                 </div>
             </div>
 
-            <div class="forgot-password">
-                <a href="#" onclick="showForgotPassword()">Forgot Password?</a>
-            </div>
-
-            <button type="submit" class="login-btn" id="loginBtn">
-                Sign In to Your Account
+            <button type="submit" id="loginBtn" class="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/25 transition-all transform hover:-translate-y-0.5 mt-4 relative overflow-hidden group">
+                <span class="relative z-10 flex items-center justify-center gap-2">
+                    Sign In
+                    <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </span>
+                <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out z-0"></div>
             </button>
         </form>
 
-        <div class="signup-link">
-            Don't have an account? <a href="{% url 'signup' %}">Create Account</a>
-        </div>
+        <p class="text-center text-sm text-gray-400 mt-8">
+            Don't have an account? 
+            <a href="{% url 'signup' %}" class="font-semibold text-white hover:text-emerald-400 transition-colors">Create one now</a>
+        </p>
     </div>
+</div>
 
-    <script>
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
-            const loginBtn = document.getElementById('loginBtn');
-            loginBtn.classList.add('loading');
-            loginBtn.textContent = '';
-        });
+{% block extra_scripts %}
+<script>
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+        const loginBtn = document.getElementById('loginBtn');
+        loginBtn.classList.add('opacity-80', 'cursor-not-allowed');
+        loginBtn.innerHTML = `<span class="flex items-center justify-center gap-2"><svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Signing in...</span>`;
+    });
 
-        function togglePassword() {
-            const passwordInput = document.getElementById('password');
-            const toggleBtn = document.querySelector('.password-toggle');
-            
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                toggleBtn.textContent = '🙈';
-            } else {
-                passwordInput.type = 'password';
-                toggleBtn.textContent = '👁️';
-            }
+    function togglePassword() {
+        const passwordInput = document.getElementById('password');
+        const eyeIcon = document.getElementById('eye-icon');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            eyeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.29 3.29m0 0a10.05 10.05 0 015.71-1.3c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0l-3.29-3.29" />`;
+        } else {
+            passwordInput.type = 'password';
+            eyeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />`;
         }
-
-        function showForgotPassword() {
-            alert('Forgot password functionality would redirect to password reset page');
-        }
-
-        // Enhanced input animations
-        document.querySelectorAll('.form-input').forEach(input => {
-            input.addEventListener('focus', function() {
-                this.parentElement.style.transform = 'translateY(-2px)';
-            });
-            
-            input.addEventListener('blur', function() {
-                this.parentElement.style.transform = 'translateY(0)';
-            });
-        });
-    </script>
-</body>
-</html>
+    }
+</script>
+{% endblock extra_scripts %}
+{% endblock %}

@@ -1,518 +1,151 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Diet Plan | FitTrack Pro</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+{% extends 'base_dashboard.html' %}
 
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            min-height: 100vh;
-            position: relative;
-        }
+{% block title %}AI Diet Plan | FitTrack Pro{% endblock %}
+{% block header_title %}Your AI Diet Plan 🍎{% endblock %}
 
-        body::before {
-            content: '';
-            position: fixed;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px);
-            background-size: 50px 50px;
-            animation: float 30s linear infinite;
-            z-index: 0;
-        }
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
 
-        @keyframes float {
-            0% { transform: translate(0, 0) rotate(0deg); }
-            100% { transform: translate(-30px, -30px) rotate(360deg); }
-        }
-
-        .container {
-            position: relative;
-            z-index: 1;
-            padding: 2rem;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .header {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-
-        .header h1 {
-            color: #1a1a1a;
-            font-size: 2rem;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .ai-badge {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 25px;
-            font-size: 0.9rem;
-            font-weight: 600;
-        }
-
-        .back-btn {
-            background: rgba(102, 126, 234, 0.1);
-            color: #667eea;
-            padding: 0.75rem 1.5rem;
-            border-radius: 12px;
-            text-decoration: none;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-
-        .back-btn:hover {
-            background: rgba(102, 126, 234, 0.2);
-        }
-
-        .plan-info-banner {
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
-            border-radius: 15px;
-            padding: 1rem 1.5rem;
-            margin-bottom: 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-
-        .plan-dates {
-            display: flex;
-            gap: 2rem;
-            color: #374151;
-            font-size: 0.9rem;
-        }
-
-        .plan-dates strong {
-            color: #667eea;
-        }
-
-        .plan-overview {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        }
-
-        .plan-type {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 25px;
-            font-weight: 600;
-            margin-bottom: 1rem;
-        }
-
-        .plan-summary {
-            color: #374151;
-            font-size: 1.1rem;
-            line-height: 1.6;
-            margin-bottom: 1.5rem;
-        }
-
-        .data-context {
-            background: rgba(102, 126, 234, 0.1);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-top: 1rem;
-        }
-
-        .data-context h4 {
-            color: #667eea;
-            font-size: 1rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-        }
-
-        .data-summary {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1rem;
-        }
-
-        .data-item {
-            background: rgba(255, 255, 255, 0.7);
-            border-radius: 8px;
-            padding: 0.75rem;
-            text-align: center;
-        }
-
-        .data-item strong {
-            display: block;
-            color: #667eea;
-            font-size: 0.85rem;
-            margin-bottom: 0.25rem;
-        }
-
-        .data-item span {
-            color: #1a1a1a;
-            font-size: 1.1rem;
-            font-weight: 600;
-        }
-
-        .targets-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .target-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 15px;
-            padding: 1.5rem;
-            text-align: center;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
-        }
-
-        .target-card:hover {
-            transform: translateY(-3px);
-        }
-
-        .target-icon {
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            color: white;
-            margin: 0 auto 1rem;
-        }
-
-        .target-value {
-            font-size: 1.8rem;
-            font-weight: 800;
-            color: #667eea;
-            margin-bottom: 0.5rem;
-        }
-
-        .target-label {
-            color: #6b7280;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        .recommendations {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 2rem;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        }
-
-        .recommendations h2 {
-            color: #1a1a1a;
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .recommendations-list {
-            list-style: none;
-        }
-
-        .recommendation-item {
-            background: rgba(102, 126, 234, 0.05);
-            border-left: 4px solid #667eea;
-            border-radius: 8px;
-            padding: 1rem 1.5rem;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            transition: transform 0.2s ease;
-        }
-
-        .recommendation-item:hover {
-            transform: translateX(5px);
-        }
-
-        .recommendation-icon {
-            width: 35px;
-            height: 35px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1rem;
-            flex-shrink: 0;
-        }
-
-        .recommendation-text {
-            color: #374151;
-            font-weight: 500;
-            line-height: 1.5;
-        }
-
-        .progress-section {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 2rem;
-            margin-top: 2rem;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        }
-
-        .progress-section h3 {
-            color: #1a1a1a;
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-        }
-
-        .progress-tip {
-            background: linear-gradient(135deg, rgb(210, 218, 255), rgb(255, 255, 255));
-            border: 2px solid rgba(102, 126, 234, 0.2);
-            border-radius: 12px;
-            padding: 1rem;
-            color: #374151;
-            line-height: 1.6;
-        }
-
-        .no-plan-message {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 3rem;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        }
-
-        .no-plan-message h2 {
-            color: #374151;
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .no-plan-message p {
-            color: #6b7280;
-            margin-bottom: 2rem;
-            line-height: 1.6;
-        }
-
-        .refresh-btn {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 12px;
-            text-decoration: none;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            transition: all 0.3s ease;
-        }
-
-        .refresh-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 1rem;
-            }
-
-            .targets-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .header {
-                flex-direction: column;
-                text-align: center;
-            }
-
-            .header h1 {
-                font-size: 1.5rem;
-                flex-direction: column;
-            }
-
-            .plan-dates {
-                flex-direction: column;
-                gap: 0.5rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .targets-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .data-summary {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <div>
-                <h1>
-                    🍎 AI Diet Plan
-                    <span class="ai-badge">🤖 AI Powered</span>
-                </h1>
+    {% if diet_plan %}
+        <!-- Top Summary Bar -->
+        <div class="bg-gradient-to-br from-emerald-600 to-electric-800 rounded-2xl p-6 shadow-xl border border-emerald-500/30 text-white flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-4">
+                <div class="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center text-3xl backdrop-blur-md border border-white/20">
+                    📋
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold mb-1">{{ diet_plan.plan_style|title }} Plan <span class="text-xs bg-emerald-500 text-white px-2 py-0.5 rounded-full ml-2 uppercase font-bold tracking-wider align-middle shadow-lg shadow-emerald-500/50">AI Generated</span></h2>
+                    <p class="text-gray-200 font-medium">{{ diet_plan.headline }}</p>
+                </div>
             </div>
-            <a href="{% url 'dashboard' %}" class="back-btn">← Back to Dashboard</a>
+            <div class="text-electric-100 text-sm max-w-sm border-l-0 md:border-l border-white/20 pl-0 md:pl-6">
+                {{ diet_plan.summary }}
+            </div>
         </div>
 
-          {% if diet_plan %}
+        <!-- AI Generation Context -->
+        {% if generation_context or plan_info %}
+        <div class="bg-dark-800/80 backdrop-blur-md rounded-2xl border border-dark-700 p-6 shadow-md relative overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-transparent pointer-events-none"></div>
             
+            <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                AI Fuzz Analysis
+            </h3>
 
-            <div class="plan-overview">
-                <div class="plan-type">
-                    <span>📋</span>
-                    <span>{{ diet_plan.plan_style|title }} Plan</span>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="space-y-1">
+                    <span class="text-sm text-gray-400 font-medium uppercase tracking-wider">Predicted State</span>
+                    <p class="text-white font-bold text-lg text-emerald-400">{{ generation_context.fitness_state|default:"Analyzing" }}</p>
                 </div>
-                
-                <div class="plan-summary">
-                    <strong>{{ diet_plan.headline }}</strong><br>
-                    {{ diet_plan.summary }}
+                <div class="space-y-1">
+                    <span class="text-sm text-gray-400 font-medium uppercase tracking-wider">Goal Alignment</span>
+                    <p class="text-white font-bold text-lg text-electric-400">{{ generation_context.goal_alignment|default:"On Track"|title }}</p>
                 </div>
+                <div class="space-y-1">
+                    <span class="text-sm text-gray-400 font-medium uppercase tracking-wider">Confidence Level</span>
+                    <p class="text-white font-bold text-lg">{{ generation_context.confidence|default:"High"|title }}</p>
+                </div>
+            </div>
 
-                <!-- NEW SYSTEM CONTEXT SUMMARY -->
-                {% if generation_context or plan_info %}
-                <div class="data-context" style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2);">
-                    <h4 style="color: #065f46;">🧠 AI Generation Context</h4>
-                    <div style="margin-top: 1rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                        <div>
-                            <strong style="color: #374151;">Predicted State:</strong> <br>
-                            <span style="color: #667eea; font-weight: 600;">{{ generation_context.fitness_state|default:"Unknown" }}</span>
-                        </div>
-                        <div>
-                            <strong style="color: #374151;">Goal Progress:</strong> <br>
-                            <span style="color: #047857; font-weight: 600;">{{ generation_context.goal_alignment|default:"On Track"|title }}</span>
-                        </div>
-                        <div>
-                            <strong style="color: #374151;">Confidence:</strong> <br>
-                            <span style="color: #6b7280; font-weight: 600;">{{ generation_context.confidence|default:"Medium"|title }}</span>
-                        </div>
+            <div class="mt-4 flex flex-wrap gap-2 pt-4 border-t border-dark-700/50">
+                <span class="px-3 py-1 bg-dark-900 border border-dark-700 text-electric-400 text-xs font-semibold rounded-full">Nutrition Log Adherence: {{ generation_context.fuzzy_scores.nutrition_adherence|default:"Evaluating"|floatformat:2 }}</span>
+                <span class="px-3 py-1 bg-dark-900 border border-dark-700 text-cyan-400 text-xs font-semibold rounded-full">Hydration Density: {{ generation_context.fuzzy_scores.hydration_score|default:"Evaluating"|floatformat:2 }}</span>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Baseline Logic Header -->
+        <div class="bg-dark-800 rounded-2xl border border-dark-700 p-6 flex flex-col md:flex-row items-center gap-6 shadow-md">
+            <!-- Weekly Stats Block -->
+            <div class="w-full md:w-auto">
+                <h4 class="text-sm text-gray-400 font-bold uppercase tracking-wider mb-2">Based on {{ weekly_stats.total_days }}-Day History</h4>
+                <div class="flex gap-4 items-center flex-wrap">
+                    <div class="bg-dark-900 px-4 py-2 rounded-xl text-center border border-dark-700">
+                        <span class="block text-xl font-bold text-white">{{ weekly_stats.avg_calories|floatformat:0 }}</span>
+                        <span class="text-[10px] text-gray-500 uppercase tracking-widest leading-tight">Avg Kcal</span>
                     </div>
-                    
-                    <h5 style="color: #374151; margin-top: 1rem; margin-bottom: 0.5rem; font-size: 0.9rem;">Core Factors</h5>
-                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                        <span style="background: rgba(102, 126, 234, 0.1); padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem; color: #667eea;">Nutrition Score: {{ generation_context.fuzzy_scores.nutrition_adherence|default:"N/A"|floatformat:2 }}</span>
-                        <span style="background: rgba(102, 126, 234, 0.1); padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem; color: #667eea;">Hydration: {{ generation_context.fuzzy_scores.hydration_score|default:"N/A"|floatformat:2 }}</span>
+                    <div class="bg-dark-900 px-4 py-2 rounded-xl text-center border border-dark-700">
+                        <span class="block text-xl font-bold text-white">{{ weekly_stats.avg_sleep }}<span class="text-xs text-gray-400">h</span></span>
+                        <span class="text-[10px] text-gray-500 uppercase tracking-widest leading-tight">Avg Sleep</span>
                     </div>
-                </div>
-                {% endif %}
-
-                <div class="data-context">
-                    <h4>📊 Based on your {{ weekly_stats.total_days }}-day average ({{ weekly_stats.active_days }} active days):</h4>
-                    <div class="data-summary">
-                        <div><strong>Sleep:</strong> {{ weekly_stats.avg_sleep }}h</div>
-                        <div><strong>Calories:</strong> {{ weekly_stats.avg_calories|floatformat:0 }}</div>
-                        <div><strong>Water:</strong> {{ weekly_stats.avg_water }}L</div>
+                    <div class="bg-dark-900 px-4 py-2 rounded-xl text-center border border-dark-700">
+                        <span class="block text-xl font-bold text-white">{{ weekly_stats.avg_water }}<span class="text-xs text-gray-400">L</span></span>
+                        <span class="text-[10px] text-gray-500 uppercase tracking-widest leading-tight">Avg Water</span>
                     </div>
                 </div>
             </div>
 
-            <div class="targets-grid">
-                <div class="target-card">
-                    <div class="target-icon">🔥</div>
-                    <div class="target-value">{{ diet_plan.targets.calories_kcal }}</div>
-                    <div class="target-label">Daily Calories</div>
-                </div>
-
-                <div class="target-card">
-                    <div class="target-icon">🥩</div>
-                    <div class="target-value">{{ diet_plan.targets.protein_g }}g</div>
-                    <div class="target-label">Protein</div>
-                </div>
-
-                <div class="target-card">
-                    <div class="target-icon">🌾</div>
-                    <div class="target-value">{{ diet_plan.targets.carbs_g }}g</div>
-                    <div class="target-label">Carbohydrates</div>
-                </div>
-
-                <div class="target-card">
-                    <div class="target-icon">💧</div>
-                    <div class="target-value">{{ diet_plan.targets.water_l }}L</div>
-                    <div class="target-label">Water</div>
-                </div>
-
-                <div class="target-card">
-                    <div class="target-icon">😴</div>
-                    <div class="target-value">{{ diet_plan.targets.sleep_h }}h</div>
-                    <div class="target-label">Sleep</div>
-                </div>
+            <!-- Arrow Indicator (Desktop only) -->
+            <div class="hidden md:block text-electric-500/50">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
             </div>
 
-            <div class="recommendations">
-                <h2>📝 Personalized Recommendations</h2>
-                <ul class="recommendations-list">
-                    {% for bullet in diet_plan.bullets %}
-                        <li class="recommendation-item">
-                            <div class="recommendation-icon">✓</div>
-                            <div class="recommendation-text">{{ bullet }}</div>
-                        </li>
-                    {% endfor %}
-                </ul>
-            </div>
-
-            <div class="progress-section">
-                <h3>📈 Track Your Progress</h3>
-                <div class="progress-tip">
-                    <strong>💡 Pro Tip:</strong> Keep logging your daily health data to get updated AI recommendations. 
-                    Your plan will automatically adjust based on your progress and changing patterns. 
-                    Check back weekly for refined suggestions tailored to your journey!
+            <!-- Target Daily Macros Block -->
+            <div class="flex-1 w-full grid grid-cols-2 lg:grid-cols-5 gap-3">
+                <div class="bg-dark-900 border border-emerald-500/30 p-3 rounded-xl text-center flex flex-col justify-center shadow-[inset_0_0_10px_rgba(16,185,129,0.05)] hover:border-emerald-500/60 transition-colors">
+                    <span class="text-xl mb-1">🔥</span>
+                    <span class="text-lg font-bold text-emerald-400">{{ diet_plan.targets.calories_kcal }}</span>
+                    <span class="text-xs text-gray-500">Daily Kcal</span>
+                </div>
+                <div class="bg-dark-900 border border-dark-700 p-3 rounded-xl text-center flex flex-col justify-center hover:border-electric-500/50 transition-colors">
+                    <span class="text-xl mb-1">🥩</span>
+                    <span class="text-lg font-bold text-white">{{ diet_plan.targets.protein_g }}g</span>
+                    <span class="text-xs text-gray-500">Protein</span>
+                </div>
+                <div class="bg-dark-900 border border-dark-700 p-3 rounded-xl text-center flex flex-col justify-center hover:border-electric-500/50 transition-colors">
+                    <span class="text-xl mb-1">🌾</span>
+                    <span class="text-lg font-bold text-white">{{ diet_plan.targets.carbs_g }}g</span>
+                    <span class="text-xs text-gray-500">Carbs</span>
+                </div>
+                <div class="bg-dark-900 border border-dark-700 p-3 rounded-xl text-center flex flex-col justify-center hover:border-cyan-500/50 transition-colors">
+                    <span class="text-xl mb-1">💧</span>
+                    <span class="text-lg font-bold text-white">{{ diet_plan.targets.water_l }}L</span>
+                    <span class="text-xs text-gray-500">Water</span>
+                </div>
+                <div class="bg-dark-900 border border-dark-700 p-3 rounded-xl text-center flex flex-col justify-center hover:border-indigo-500/50 transition-colors">
+                    <span class="text-xl mb-1">😴</span>
+                    <span class="text-lg font-bold text-white">{{ diet_plan.targets.sleep_h }}h</span>
+                    <span class="text-xs text-gray-500">Sleep</span>
                 </div>
             </div>
+        </div>
 
-        {% else %}
-            <div class="no-plan-message">
-                <h2>🤖 AI Diet Plan Not Available</h2>
-                <p>
-                    We need at least 3 days of health data to generate your personalized AI diet plan. 
-                    Keep tracking your daily metrics and come back once you have enough data!
+        <!-- AI Recommendations List -->
+        <div class="bg-dark-800 rounded-2xl border border-dark-700 shadow-md overflow-hidden">
+            <div class="p-4 bg-dark-900 border-b border-dark-700 flex items-center justify-between">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <span>💡</span> Personalized Nutritional Logistics
+                </h3>
+            </div>
+            <ul class="p-6 space-y-4">
+                {% for bullet in diet_plan.bullets %}
+                <li class="flex items-start gap-4 p-4 rounded-xl hover:bg-dark-700/50 transition-colors border border-transparent hover:border-dark-600">
+                    <div class="mt-0.5 bg-emerald-500/20 text-emerald-400 p-1 rounded font-bold text-xs ring-1 ring-emerald-500/50">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                    </div>
+                    <div class="flex-1 text-gray-300">{{ bullet }}</div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        
+    {% else %}
+        <!-- Lock Screen / Missing Data -->
+        <div class="h-[60vh] flex items-center justify-center">
+            <div class="bg-dark-800/80 backdrop-blur-xl border border-dark-700 p-10 rounded-3xl shadow-2xl text-center max-w-lg w-full">
+                <div class="w-20 h-20 bg-dark-900 border border-dark-700 rounded-2xl mx-auto flex items-center justify-center text-4xl mb-6 shadow-inner">
+                    🔒
+                </div>
+                <h2 class="text-2xl font-bold tracking-tight text-white mb-2">Insufficient Health Vector</h2>
+                <p class="text-gray-400 mb-8 leading-relaxed">
+                    Our Fuzz Logic engines require at least 3 days of health logs to securely compute your state matrices. Start logging your food and workouts to unlock your diet generation!
                 </p>
-                <a href="{% url 'dashboard' %}" class="refresh-btn">
-                    📝 Continue Tracking
+                <a href="{% url 'form' %}" class="w-full py-4 inline-flex items-center justify-center bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold rounded-xl shadow-lg transition-transform hover:-translate-y-0.5">
+                    Log Health Data
                 </a>
             </div>
-        {% endif %}
-    </div>
-</body>
-</html>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

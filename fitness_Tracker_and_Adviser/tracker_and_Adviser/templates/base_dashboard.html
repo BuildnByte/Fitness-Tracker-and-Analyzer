@@ -1,0 +1,174 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Dashboard | Fitness Tracker Pro{% endblock %}</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        dark: {
+                            900: '#0B0F19', // Deepest background
+                            800: '#111827', // Card background / Sidebar
+                            700: '#1F2937', // Borders, subtle backgrounds
+                        },
+                        emerald: {
+                            400: '#34d399',
+                            500: '#10b981',
+                            600: '#059669',
+                        },
+                        electric: {
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar for dark theme */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0B0F19; }
+        ::-webkit-scrollbar-thumb { background: #1F2937; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #374151; }
+
+        /* Conic Gradient Progress Rings Utility */
+        .progress-ring {
+            background: conic-gradient(var(--tw-gradient-from) var(--progress), var(--tw-gradient-to) 0deg);
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-dark-900 text-gray-200 font-sans min-h-screen antialiased flex">
+
+    <!-- Alert Messages -->
+    <div class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="p-4 rounded-xl shadow-lg border backdrop-blur-md flex items-start gap-3 transform transition-all duration-300 animate-[slideIn_0.3s_ease-out]
+                    {% if message.tags == 'success' %} bg-emerald-500/10 border-emerald-500/30 text-emerald-400
+                    {% elif message.tags == 'error' %} bg-red-500/10 border-red-500/30 text-red-400
+                    {% elif message.tags == 'warning' %} bg-orange-500/10 border-orange-500/30 text-orange-400
+                    {% else %} bg-electric-500/10 border-electric-500/30 text-electric-400 {% endif %}">
+                    <div class="flex-1 text-sm font-medium">{{ message }}</div>
+                    <button onclick="this.parentElement.remove()" class="text-gray-400 hover:text-white transition-colors">&times;</button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Desktop Sidebar -->
+    <aside class="hidden md:flex flex-col w-64 fixed inset-y-0 left-0 bg-dark-800 border-r border-dark-700 z-40">
+        <div class="p-6 flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-white font-bold text-xl">F</div>
+            <span class="text-xl font-bold tracking-tight text-white">FitTrack Pro</span>
+        </div>
+        
+        <nav class="flex-1 px-4 py-4 space-y-1">
+            <a href="{% url 'dashboard' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors hover:bg-dark-700 hover:text-white {% if request.resolver_match.url_name == 'dashboard' %}bg-electric-500/10 text-electric-400 font-medium{% else %}text-gray-400{% endif %}">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                Dashboard
+            </a>
+            <a href="{% url 'workout_plan' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors hover:bg-dark-700 hover:text-white {% if request.resolver_match.url_name == 'workout_plan' %}bg-emerald-500/10 text-emerald-400 font-medium{% else %}text-gray-400{% endif %}">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Workout Plan <!-- Note: Using map icon as placeholder -->
+            </a>
+            <a href="{% url 'diet_plan' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors hover:bg-dark-700 hover:text-white {% if request.resolver_match.url_name == 'diet_plan' %}bg-emerald-500/10 text-emerald-400 font-medium{% else %}text-gray-400{% endif %}">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Diet Plan
+            </a>
+            <a href="{% url 'form' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors hover:bg-dark-700 hover:text-white {% if request.resolver_match.url_name == 'form' %}bg-electric-500/10 text-electric-400 font-medium{% else %}text-gray-400{% endif %}">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                Log Health Daily
+            </a>
+            <a href="{% url 'weigh_in' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors hover:bg-dark-700 hover:text-white {% if request.resolver_match.url_name == 'weigh_in' %}bg-electric-500/10 text-electric-400 font-medium{% else %}text-gray-400{% endif %}">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"></path></svg>
+                Weigh-in
+            </a>
+        </nav>
+
+        <div class="p-4 border-t border-dark-700">
+            <a href="{% url 'logout' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 transition-colors hover:bg-red-500/10 hover:text-red-400">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                Log out
+            </a>
+        </div>
+    </aside>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="md:hidden fixed bottom-0 w-full bg-dark-800/95 backdrop-blur-md border-t border-dark-700 z-50 flex justify-around items-center h-16 pb-safe">
+        <a href="{% url 'dashboard' %}" class="p-2 flex flex-col items-center gap-1 {% if request.resolver_match.url_name == 'dashboard' %}text-electric-400{% else %}text-gray-400{% endif %}">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+            <span class="text-[10px] font-medium">Home</span>
+        </a>
+        <a href="{% url 'workout_plan' %}" class="p-2 flex flex-col items-center gap-1 {% if request.resolver_match.url_name == 'workout_plan' %}text-emerald-400{% else %}text-gray-400{% endif %}">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span class="text-[10px] font-medium">Workout</span>
+        </a>
+        <a href="{% url 'diet_plan' %}" class="p-2 flex flex-col items-center gap-1 {% if request.resolver_match.url_name == 'diet_plan' %}text-emerald-400{% else %}text-gray-400{% endif %}">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span class="text-[10px] font-medium">Diet</span>
+        </a>
+        <a href="{% url 'form' %}" class="p-2 flex flex-col items-center gap-1 text-gray-400">
+            <div class="h-10 w-10 bg-electric-500 rounded-full flex items-center justify-center -mt-6 border-4 border-dark-900 shadow-lg text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            </div>
+        </a>
+        <a href="{% url 'logout' %}" class="p-2 flex flex-col items-center gap-1 text-gray-400">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+            <span class="text-[10px] font-medium">Out</span>
+        </a>
+    </nav>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 md:ml-64 pb-16 md:pb-0 min-h-screen flex flex-col">
+        <!-- Top Navbar -->
+        <header class="h-16 border-b border-dark-700 bg-dark-800/50 backdrop-blur top-0 sticky z-30 flex items-center justify-between px-6">
+            <div>
+                <h1 class="text-xl font-semibold text-white">{% block header_title %}Dashboard{% endblock %}</h1>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-dark-700 flex items-center justify-center text-sm font-medium">
+                        {{ request.session.user.name|default:"User"|slice:":1"|upper }}
+                    </div>
+                    <span class="text-sm font-medium hidden md:block">{{ request.session.user.name|default:"User" }}</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <main class="flex-1 p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Animation Utilities -->
+    <style>
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

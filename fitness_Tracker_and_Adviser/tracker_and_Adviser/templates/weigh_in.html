@@ -1,183 +1,79 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Weekly Weigh-in | FitTrack Pro</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+{% extends 'base_dashboard.html' %}
 
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 1rem;
-        }
+{% block title %}Weekly Weigh-in | FitTrack Pro{% endblock %}
+{% block header_title %}Weekly Weigh-in ⚖️{% endblock %}
 
-        .container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            padding: 3rem 2.5rem;
-            border-radius: 24px;
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-        }
-
-        .icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-        }
-
-        h1 {
-            color: #1a1a1a;
-            font-size: 1.75rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-
-        p.subtitle {
-            color: #6b7280;
-            margin-bottom: 2rem;
-            font-size: 0.95rem;
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-            text-align: left;
-        }
-
-        .form-label {
-            display: block;
-            color: #374151;
-            font-size: 0.875rem;
-            font-weight: 500;
-            margin-bottom: 0.5rem;
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 1rem 1.25rem;
-            background: #f9fafb;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            font-size: 1.25rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            outline: none;
-            text-align: center;
-        }
-
-        .form-input:focus {
-            background: white;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .submit-btn {
-            width: 100%;
-            padding: 1rem;
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            font-size: 1rem;
-            font-weight: 600;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 1rem;
-        }
-
-        .submit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
-        }
-
-        .cancel-btn {
-            display: inline-block;
-            color: #6b7280;
-            text-decoration: none;
-            font-weight: 500;
-            transition: color 0.3s;
-        }
-
-        .cancel-btn:hover {
-            color: #374151;
-        }
-
-        .messages {
-            margin-bottom: 1.5rem;
-        }
-
-        .messages .error {
-            background: #fee2e2;
-            color: #dc2626;
-            padding: 0.75rem;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            text-align: left;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="icon">⚖️</div>
-        <h1>Weekly Weigh-in</h1>
-        <p class="subtitle">Log your current weight to monitor your progress and keep your plan accurate.</p>
+{% block content %}
+<div class="h-[70vh] flex flex-col justify-center items-center max-w-md mx-auto w-full">
+    
+    <!-- Glassmorphism Card -->
+    <div class="bg-dark-800/60 backdrop-blur-xl border border-dark-700/50 p-8 rounded-3xl shadow-2xl relative z-10 w-full text-center">
         
-        {% if messages %}
-        <div class="messages">
-            {% for message in messages %}
-                <div class="{% if message.tags %}{{ message.tags }}{% endif %}">
-                    {{ message }}
-                </div>
-            {% endfor %}
+        <div class="text-center mb-6">
+            <div class="w-20 h-20 bg-gradient-to-br from-emerald-400 to-electric-600 rounded-full mx-auto flex items-center justify-center text-4xl mb-6 shadow-lg shadow-emerald-500/20">
+                ⚖️
+            </div>
+            <h1 class="text-2xl font-bold tracking-tight text-white mb-2">Weekly Weigh-in</h1>
+            <p class="text-gray-400 text-sm">Log your current weight to calculate your progress and adjust AI targets.</p>
         </div>
-        {% endif %}
 
-        <form method="POST">
+        <form method="POST" id="weighInForm" class="space-y-6">
             {% csrf_token %}
-            <div class="form-group">
-                <label class="form-label" for="weight">Current Weight (kg)</label>
-                <input 
-                    type="number" 
-                    step="0.1" 
-                    id="weight" 
-                    name="weight" 
-                    class="form-input" 
-                    value="{{ current_weight }}" 
-                    required 
-                    min="30" max="300"
-                />
+            
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-300" for="weight">Current Weight (kg)</label>
+                <div class="relative max-w-xs mx-auto">
+                    <input 
+                        type="number" 
+                        step="0.1" 
+                        id="weight" 
+                        name="weight" 
+                        value="{{ current_weight }}" 
+                        required 
+                        min="30" max="300"
+                        class="w-full px-4 py-4 bg-dark-900/50 border-2 border-dark-700 rounded-2xl text-white text-center text-3xl font-bold outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all tracking-wider"
+                    />
+                    <span class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">kg</span>
+                </div>
             </div>
             
-            <button type="submit" class="submit-btn" id="submitBtn">
-                Save Weigh-in
-            </button>
+            <div class="space-y-4 pt-4">
+                <button type="submit" id="submitBtn" class="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold text-lg rounded-xl shadow-lg shadow-emerald-500/25 transition-all transform hover:-translate-y-0.5">
+                    Save Weigh-in Record
+                </button>
+
+                <a href="{% url 'dashboard' %}" class="block text-sm font-medium text-gray-400 hover:text-white transition-colors">
+                    Cancel and return to Dashboard
+                </a>
+            </div>
         </form>
 
-        <a href="{% url 'dashboard' %}" class="cancel-btn">Back to Dashboard</a>
     </div>
-    <script>
-        document.getElementById('submitBtn').addEventListener('click', function(e) {
-            const weight = document.getElementById('weight').value;
-            if(!weight || weight <= 0) {
-                e.preventDefault();
-                alert('Please enter a valid weight.');
-            } else {
-                this.textContent = 'Saving...';
-                this.style.opacity = '0.8';
-                this.style.pointerEvents = 'none';
-            }
-        });
-    </script>
-</body>
-</html>
+</div>
+
+{% block extra_scripts %}
+<script>
+    document.getElementById('weighInForm').addEventListener('submit', function(e) {
+        const weight = document.getElementById('weight').value;
+        if(!weight || weight <= 0) {
+            e.preventDefault();
+            alert('Please enter a valid weight.');
+        } else {
+            const btn = document.getElementById('submitBtn');
+            btn.textContent = 'Saving...';
+            btn.classList.add('opacity-80', 'cursor-not-allowed');
+            btn.disabled = true;
+        }
+    });
+
+    // Animate input
+    const input = document.getElementById('weight');
+    input.addEventListener('focus', function() {
+        this.parentElement.parentElement.parentElement.style.transform = 'translateY(-2px) scale(1.01)';
+    });
+    input.addEventListener('blur', function() {
+        this.parentElement.parentElement.parentElement.style.transform = 'translateY(0) scale(1)';
+    });
+</script>
+{% endblock %}
+{% endblock %}
